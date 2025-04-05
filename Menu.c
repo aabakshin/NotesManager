@@ -1,11 +1,15 @@
 #ifndef MENU_C_SENTRY
 #define MENU_C_SENTRY
 
+#include "Input.h"
+#include "Menu.h"
+#include <stdio.h>
+#include <stdlib.h>
+
+
 static const double app_version = 0.1;
 static const char* app_name = "NotesManager";
 
-#include "Menu.h"
-#include <stdio.h>
 
 void show_menu(void)
 {
@@ -16,12 +20,41 @@ void show_menu(void)
 			"     (1) - Insert a new note in the table.\n"
 			"     (2) - Remove an existing note from the table.\n"
 			"     (3) - Print a note with specific ID in stdout.\n"
-			"     (4) - Print the table in stdout.\n");
+			"     (4) - Print the table in stdout.\n"
+			"     (5) - Exit from app.\n");
 	printf("-========== %s version %.1lf ==========-\n\n", app_name, app_version);
 
 	printf("%s", ">>> ");
 
 	fflush(stdout);
+}
+
+int choose_menu_option(int* mode)
+{
+	do
+	{
+		show_menu();
+
+		char buffer[MAX_READ_BUF_SIZE];
+		int result = input(buffer, MAX_READ_BUF_SIZE);
+
+#ifdef DEBUG
+		if ( result > -1 )
+		{
+			view_str(buffer, result);
+		}
+#endif
+		if ( result == -1 )
+		{
+			putchar('\n');
+			return 0;
+		}
+
+		*mode = atoi(buffer);
+	}
+	while ( (*mode < INSERT_NEW_NOTE) || (*mode > EXIT_FROM_APP) );
+
+	return 1;
 }
 
 #endif
