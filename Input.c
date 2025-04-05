@@ -2,31 +2,66 @@
 #define INPUT_C_SENTRY
 
 #include "Input.h"
-
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
+#include <termios.h>
+
+
+enum {   MAX_SYM_CODE_SIZE    =   10   };
+
+
+static int get_str(char* buffer, int buffer_size);
+
+
+int input(char* buffer, int buffer_size)
+{
+	/* Выключение канонического режима терминала */
+	struct termios t1, t2;
+	tcgetattr(0, &t1);
+	memcpy(&t2, &t1, sizeof(t1));
+
+	t1.c_lflag &= ~ICANON;
+	t1.c_lflag &= ~ISIG;
+	t1.c_lflag &= ~ECHO;
+	t1.c_cc[VMIN] = 0;
+	t1.c_cc[VTIME] = 0;
+
+	tcsetattr(0, TCSANOW, &t1);
+	/*********************************************/	
+	
+	int result = get_str(buffer, buffer_size);
+
+	/* восстановление канонического режима */
+	tcsetattr(0, TCSANOW, &t2);
+
+	return result;
+}
 
 
 /* 
  * Обработка терминального ввода в ручном режиме при помощи termios
- * Реализация некоторых возможностей терминала
- * Получение строки из станд.потока ввода через низкоуровненые функции и обработка
- * содержимого с учётом использования многобайтных символов
+ * Реализация некоторых возможностей терминала(backspace, удаление последнего слова, del, стрелка влево-вправо)
+ * Получение строки из станд.потока ввода через низкоуровненые функции и 
+ * обработка содержимого с учётом использования многобайтных символов
+ * Кол-во вводимых с стандартного потока ввода символов должно быть не более buffer_size-2
+ * Возвращает длину получившейся строки вместе с символом line feed
  */
 
-int get_str(char* buffer, int buffer_size)
+static int get_str(char* buffer, int buffer_size)
 {
 	if ( (buffer == NULL) || (buffer_size < 2) )
 		return -1;
 
-	char read_sym[10] = { 0 };
+	char read_sym[MAX_SYM_CODE_SIZE] = { 0 };
 	int i = 0;
 	int left_offset = 0;
 
 	while ( 1 )
 	{
 		int rc = read(0, read_sym, 6);	/* 6 - макс. размер в байтах кода клавиши на клавиатуре(F1-F12) */
+
 		if ( rc < 1 )
 			continue;
 		
@@ -278,7 +313,7 @@ int get_str(char* buffer, int buffer_size)
 							( read_sym[2] == 0x41 )				/* 65 */
 					)
 			{
-
+					/* ignore ARROW_UP key */
 			}
 
 			/* обработка клавиши ARROW_DOWN с 3-х байтным кодом */
@@ -288,7 +323,7 @@ int get_str(char* buffer, int buffer_size)
 							( read_sym[2] == 0x42 )				/* 66 */
 					)
 			{
-
+					/* ignore ARROW_DOWN key */
 			}
 		}
 		else if ( rc == 4 )
