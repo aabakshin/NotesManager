@@ -1,3 +1,4 @@
+#include "Input.h"
 #include "Menu.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -5,6 +6,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <time.h>
 
 
 #define FILENAME "records_table.dat"
@@ -23,34 +25,95 @@ struct Note
 };
 typedef struct Note Note;
 
-
-#ifdef DEBUG
-static void view_str(const char* str, int str_len)
+static char* get_date_str(char* current_date, int date_size)
 {
-	printf("String length = %d\n", str_len);
-	printf("String format: %s\n", str);
+	if ( current_date == NULL )
+		return NULL;
 
-	printf("%s", "Decimal format:\n");
-	int i;
-	for ( i = 0; i < str_len; i++ )
+	if ( date_size < TIMESTAMP_SIZE )
+		date_size = TIMESTAMP_SIZE;
+
+	time_t cur_time_in_secs = time(0);
+	struct tm* cur_time = NULL;
+	cur_time = localtime(&cur_time_in_secs);
+	strftime(current_date, date_size, "%a %d %b %Y %H:%M:%S", cur_time);
+
+	return current_date;
+}
+
+int insert_new_note(FILE* fd, int file_size)
+{
+	char buffer[NOTE_SIZE];
+	int result = input(buffer, NOTE_SIZE);
+	if ( result == -1 )
 	{
-		printf("%03d ", str[i]);
-		if ( ((i+1) % 10) == 0 )
-			putchar('\n');
+		putchar('\n');
+		return 0;
 	}
-	putchar('\n');
+	
+	int len = strlen(buffer);
+	if ( buffer[len-1] == '\n' )
+		buffer[len-1] = '\0';
+
+	int records_count = file_size / sizeof(Note);
+	
+	if ( records_count < 0 )
+	{
+		return 0;
+	}
+
+	Note record;
+	memset(&record, 0, sizeof(Note));
+
+	if ( records_count == 0 )
+	{
+		record.id = 1;
+	}
+	else
+	{
+		record.id = records_count + 1;
+	}
+	
+	strcpy(record.note, buffer);
+	get_date_str(record.timestamp, TIMESTAMP_SIZE);
+	
+	fseek(fd, 0, SEEK_END);
+	fwrite(&record, sizeof(Note), 1, fd);
+
+	return 1;
+}
+
+int remove_exist_note(FILE* fd, int file_size)
+{
+	return 1;
+}
+
+int print_specific_note(FILE* fd, int file_size)
+{
+
 
 }
-#endif
 
+int print_table(FILE* fd, int file_size)
+{
+}
 
 int main(void)
 {
 	struct stat file_info;
 	memset(&file_info, 0, sizeof(file_info));
 
+	int (*hndls[HANDLERS_NUM])(FILE*, int) =
+	{
+				NULL,
+				insert_new_note,
+				remove_exist_note,
+				print_specific_note,
+				print_table
+	};
 
 	int create_file_flag = 0;
+	long size = 0;
 	FILE* fd = fopen(FILENAME, "rb+");
 	if ( fd == NULL )
 	{
@@ -73,7 +136,7 @@ int main(void)
 			return 1;
 		}
 
-		long size = file_info.st_size;
+		size = file_info.st_size;
 		if ( (size % sizeof(struct Note)) != 0 )
 		{
 			fprintf(stderr, "File \"%s\" has invalid structure!\n", FILENAME);
@@ -81,7 +144,10 @@ int main(void)
 			return 1;
 		}
 	}
-	
+
+
+
+
 	while ( 1 )
 	{
 		int mode = -1;
@@ -95,16 +161,54 @@ int main(void)
 		switch ( mode )
 		{
 			case INSERT_NEW_NOTE:
-
+				printf("%s", "\nEnter a note: ");
+				fflush(stdout);
+				if ( !hndls[INSERT_NEW_NOTE](fd, size) )
+				{
+					fclose(fd);
+					fprintf(stderr, "%s", "Unable to insert note in the table!\n");
+					return 1;
+				}
+				printf("%s", "\nNote has successfully inserted in the table!\n");
+				fflush(stdout);
+				sleep(2);
 				break;
 			case REMOVE_EXIST_NOTE:
-
+				printf("%s", "\nEnter note ID: ");
+				fflush(stdout);
+				if ( !hndls[REMOVE_EXIST_NOTE](fd, size) )
+				{
+					fclose(fd);
+					fprintf(stderr, "%s", "Unable to remove note from the table!\n");
+					return 1;
+				}
+				printf("%s", "\nNote has successfully removed from the table!\n");
+				fflush(stdout);
+				sleep(2);
 				break;
 			case PRINT_SPECIFIC_NOTE:
-
+				printf("%s", "\nEnter note ID: ");
+				fflush(stdout);
+				if ( !hndls[PRINT_SPECIFIC_NOTE](fd, size) )
+				{
+					fclose(fd);
+					fprintf(stderr, "%s", "Unable to print specific note!\n");
+					return 1;
+				}
+				printf("%s", "\nPress any key for continue\n");
+				fflush(stdout);
+				getchar();
 				break;
 			case PRINT_TABLE:
-
+				if ( !hndls[PRINT_TABLE](fd, size) )
+				{
+					fclose(fd);
+					fprintf(stderr, "%s", "Unable to print the table!\n");
+					return 1;
+				}
+				printf("%s", "\nPress any key for continue\n");
+				fflush(stdout);
+				getchar();
 				break;
 			case EXIT_FROM_APP:
 				fclose(fd);

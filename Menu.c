@@ -11,6 +11,9 @@ static const double app_version = 0.1;
 static const char* app_name = "NotesManager";
 
 
+static void view_str(const char* str, int str_len);
+
+
 void show_menu(void)
 {
 	printf("%s", "\033[0d\033[2J"); /* clear the screen */
@@ -28,6 +31,25 @@ void show_menu(void)
 
 	fflush(stdout);
 }
+
+#ifdef DEBUG
+static void view_str(const char* str, int str_len)
+{
+	printf("String length = %d\n", str_len);
+	printf("String format: %s\n", str);
+
+	printf("%s", "Decimal format:\n");
+	int i;
+	for ( i = 0; i < str_len; i++ )
+	{
+		printf("%03d ", str[i]);
+		if ( ((i+1) % 10) == 0 )
+			putchar('\n');
+	}
+	putchar('\n');
+
+}
+#endif
 
 int choose_menu_option(int* mode)
 {
