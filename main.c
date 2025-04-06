@@ -43,6 +43,18 @@ static char* get_date_str(char* current_date, int date_size)
 
 int insert_new_note(FILE* fd, int file_size)
 {
+	if ( fd == NULL )
+	{
+		return 0;
+	}
+
+	int records_count = file_size / sizeof(Note);
+	if ( records_count < 0 )
+	{
+		fprintf(stderr, "%s", "\nFile size has invalid value!\n");
+		return 0;
+	}
+
 	char buffer[NOTE_SIZE];
 	int result = input(buffer, NOTE_SIZE);
 	if ( result == -1 )
@@ -50,17 +62,11 @@ int insert_new_note(FILE* fd, int file_size)
 		putchar('\n');
 		return 0;
 	}
-	
+
 	int len = strlen(buffer);
 	if ( buffer[len-1] == '\n' )
 		buffer[len-1] = '\0';
 
-	int records_count = file_size / sizeof(Note);
-	
-	if ( records_count < 0 )
-	{
-		return 0;
-	}
 
 	Note record;
 	memset(&record, 0, sizeof(Note));
@@ -73,10 +79,10 @@ int insert_new_note(FILE* fd, int file_size)
 	{
 		record.id = records_count + 1;
 	}
-	
+
 	strcpy(record.note, buffer);
 	get_date_str(record.timestamp, TIMESTAMP_SIZE);
-	
+
 	fseek(fd, 0, SEEK_END);
 	fwrite(&record, sizeof(Note), 1, fd);
 
@@ -85,17 +91,159 @@ int insert_new_note(FILE* fd, int file_size)
 
 int remove_exist_note(FILE* fd, int file_size)
 {
+	if ( fd == NULL )
+	{
+		return 0;
+	}
+
+	int records_count = file_size / sizeof(Note);
+	if ( records_count <= 0 )
+	{
+		fprintf(stderr, "%s", "\nTable is empty file or file size has invalid value!\n");
+		return 0;
+	}
+
+	char buffer[10];
+	int result = input(buffer, 10);
+	if ( result == -1 )
+	{
+		putchar('\n');
+		return 0;
+	}
+
+	int len = strlen(buffer);
+	if ( buffer[len-1] == '\n' )
+		buffer[len-1] = '\0';
+
+	int id = atoi(buffer);
+	if ( id < 1 )
+	{
+		fprintf(stderr, "%s", "\n\"id\" has invalid value!\n");
+		return 0;
+	}
+
+	Note record;
+	int i;
+	for ( i = 1; i <= records_count; i++ )
+	{
+		memset(&record, 0, sizeof(Note));
+		fseek(fd, (i-1) * sizeof(Note), SEEK_SET);
+		fread(&record, sizeof(Note), 1, fd);
+
+		if ( id == record.id )
+			break;
+	}
+
+	if ( i > records_count )
+	{
+		fprintf(stderr, "\nUnable to find a note with id=%d in table!\n", id);
+		return 0;
+	}
+
+	int idx = i;
+	const char eof = 0xFF;
+
+	/* Удаляемая запись последняя */
+	if ( i >= records_count )
+	{
+		fseek(fd, (i-1) * sizeof(Note), SEEK_SET);
+		fwrite(&eof, sizeof(char), 1, fd);
+		fseek(fd, 0, SEEK_SET);
+	}
+	else
+	{
+
+	}
+
+	
+
+
 	return 1;
 }
 
 int print_specific_note(FILE* fd, int file_size)
 {
+	if ( fd == NULL )
+	{
+		return 0;
+	}
 
+	int records_count = file_size / sizeof(Note);
+	if ( records_count <= 0 )
+	{
+		fprintf(stderr, "%s", "\nTable is empty file or file size has invalid value!\n");
+		return 0;
+	}
 
+	char buffer[10];
+	int result = input(buffer, 10);
+	if ( result == -1 )
+	{
+		putchar('\n');
+		return 0;
+	}
+
+	int len = strlen(buffer);
+	if ( buffer[len-1] == '\n' )
+		buffer[len-1] = '\0';
+
+	int id = atoi(buffer);
+	if ( id < 1 )
+	{
+		fprintf(stderr, "%s", "\n\"id\" has invalid value!\n");
+		return 0;
+	}
+
+	Note record;
+	int i;
+	for ( i = 1; i <= records_count; i++ )
+	{
+		memset(&record, 0, sizeof(Note));
+		fseek(fd, (i-1) * sizeof(Note), SEEK_SET);
+		fread(&record, sizeof(Note), 1, fd);
+
+		if ( id == record.id )
+			break;
+	}
+
+	if ( i > records_count )
+	{
+		fprintf(stderr, "\nUnable to find a note with id=%d in table!\n", id);
+		return 0;
+	}
+
+	printf("\n(%d)     \"%s\"     [%s]\n", record.id, record.note, record.timestamp);
+
+	return 1;
 }
 
 int print_table(FILE* fd, int file_size)
 {
+	if ( fd == NULL )
+	{
+		return 0;
+	}
+
+	int records_count = file_size / sizeof(Note);
+	if ( records_count <= 0 )
+	{
+		fprintf(stderr, "%s", "\nTable is empty file or file size has invalid value!\n");
+		return 0;
+	}
+
+	putchar('\n');
+	Note record;
+	int i;
+	for ( i = 1; i <= records_count; i++ )
+	{
+		memset(&record, 0, sizeof(Note));
+		fseek(fd, (i-1) * sizeof(Note), SEEK_SET);
+		fread(&record, sizeof(Note), 1, fd);
+
+		printf("(%d)     \"%s\"     [%s]\n", record.id, record.note, record.timestamp);
+	}
+
+	return 1;
 }
 
 int main(void)
@@ -144,9 +292,6 @@ int main(void)
 			return 1;
 		}
 	}
-
-
-
 
 	while ( 1 )
 	{
