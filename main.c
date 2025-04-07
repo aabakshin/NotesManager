@@ -85,6 +85,7 @@ int insert_new_note(FILE* fd, int file_size)
 
 	fseek(fd, 0, SEEK_END);
 	fwrite(&record, sizeof(Note), 1, fd);
+	fseek(fd, 0, SEEK_SET);
 
 	return 1;
 }
@@ -141,21 +142,31 @@ int remove_exist_note(FILE* fd, int file_size)
 	}
 
 	int idx = i;
-	const char eof = 0xFF;
-
+	const signed char eof = 0xFF;
+	
 	/* Удаляемая запись последняя */
-	if ( i >= records_count )
+	if ( idx >= records_count )
 	{
-		fseek(fd, (i-1) * sizeof(Note), SEEK_SET);
+		fseek(fd, (idx-1) * sizeof(Note), SEEK_SET);
 		fwrite(&eof, sizeof(char), 1, fd);
 		fseek(fd, 0, SEEK_SET);
 	}
 	else
 	{
-
+		for ( i = idx; i < records_count; i++ )
+		{
+			memset(&record, 0, sizeof(Note));
+			fseek(fd, i * sizeof(Note), SEEK_SET);
+			fread(&record, sizeof(Note), 1, fd);
+			
+			fseek(fd, (i-1) * sizeof(Note), SEEK_SET);
+			fwrite(&record, sizeof(Note), 1, fd);
+		}
+		fwrite(&eof, sizeof(char), 1, fd);
+		fseek(fd, 0, SEEK_SET);
 	}
 
-	
+	/* перенумеровать записи в таблице */
 
 
 	return 1;
@@ -230,8 +241,7 @@ int print_table(FILE* fd, int file_size)
 		fprintf(stderr, "%s", "\nTable is empty file or file size has invalid value!\n");
 		return 0;
 	}
-
-	putchar('\n');
+	
 	Note record;
 	int i;
 	for ( i = 1; i <= records_count; i++ )
@@ -302,7 +312,6 @@ int main(void)
 			return 1;
 		}
 
-		int success_operation = 0;
 		switch ( mode )
 		{
 			case INSERT_NEW_NOTE:
@@ -314,9 +323,26 @@ int main(void)
 					fprintf(stderr, "%s", "Unable to insert note in the table!\n");
 					return 1;
 				}
+				
+				if ( lstat(FILENAME, &file_info) == -1 )
+				{
+					perror("fstat");
+					fclose(fd);
+					return 1;
+				}
+
+				size = file_info.st_size;
+				if ( (size % sizeof(struct Note)) != 0 )
+				{
+					fprintf(stderr, "File \"%s\" has invalid structure!\n", FILENAME);
+					fclose(fd);
+					return 1;
+				}
+
 				printf("%s", "\nNote has successfully inserted in the table!\n");
+				printf("%s", "Press any key for continue\n");
 				fflush(stdout);
-				sleep(2);
+				getchar();
 				break;
 			case REMOVE_EXIST_NOTE:
 				printf("%s", "\nEnter note ID: ");
@@ -327,9 +353,26 @@ int main(void)
 					fprintf(stderr, "%s", "Unable to remove note from the table!\n");
 					return 1;
 				}
+				
+				if ( lstat(FILENAME, &file_info) == -1 )
+				{
+					perror("fstat");
+					fclose(fd);
+					return 1;
+				}
+				
+				size = file_info.st_size;
+				if ( (size % sizeof(struct Note)) != 0 )
+				{
+					fprintf(stderr, "File \"%s\" has invalid structure!\n", FILENAME);
+					fclose(fd);
+					return 1;
+				}
+
 				printf("%s", "\nNote has successfully removed from the table!\n");
+				printf("%s", "Press any key for continue\n");
 				fflush(stdout);
-				sleep(2);
+				getchar();
 				break;
 			case PRINT_SPECIFIC_NOTE:
 				printf("%s", "\nEnter note ID: ");
