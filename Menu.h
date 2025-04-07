@@ -10,8 +10,6 @@ enum
 			EXIT_FROM_APP
 };
 
-enum { HANDLERS_NUM			=			5 };
-
 void show_menu(void);
 int choose_menu_option(int* mode);
 
