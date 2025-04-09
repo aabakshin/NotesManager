@@ -163,14 +163,7 @@ static int get_records_num(FILE* fd)
 
 	int records_num = 0;
 	
-	/* Potential BUG! Need fix! */
-	long cur_pos = ftell(fd);
-	fseek(fd, 0, SEEK_SET);			/* <- bug here */
-	long new_cur_pos = ftell(fd);
-
-	printf("\ncur_pos = %ld\n"
-			"new_cur_pos = %ld\n", cur_pos, new_cur_pos);
-	/* Potential BUG! Need fix! */
+	fseek(fd, 0, SEEK_SET);
 
 	Note note;
 	int cur_id = 0;
@@ -433,13 +426,15 @@ static int remove_exist_note(FILE* fd, int records_count)
 
 	if ( !get_record_by_index(fd, input_id) )
 	{
-		fprintf(stderr, "\nUnable to find a note with id=%d in table!\n", input_id);
+		fprintf(stderr, "\nUnable to find a note with id = %d in table!\n", input_id);
 		return 0;
 	}
-	
+
 	fseek(fd, (input_id-1)*sizeof(Note), SEEK_SET);
-	const char zero = 0x00;
-	fwrite(&zero, sizeof(char), sizeof(Note), fd);
+	
+	Note zeroes;
+	memset(&zeroes, 0, sizeof(Note));
+	fwrite(&zeroes, sizeof(Note), 1, fd);
 
 	return 1;
 }
