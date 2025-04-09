@@ -138,7 +138,44 @@ static char* get_date_str(char* current_date, int date_size)
 
 static int get_records_num(FILE* fd)
 {
+	struct stat st;
+	memset(&st, 0, sizeof(struct stat));
 
+	if ( lstat(FILENAME, &st) == -1 )
+	{
+		fprintf(stderr, "Unable to get size of \"%s\" file!\n", FILENAME);
+		return -1;
+	}
+	
+	if ( (st.st_size % sizeof(Note)) != 0 )
+	{
+		fprintf(stderr, "File \"%s\" has incorrect structure size!\n", FILENAME);
+		return -1;
+	}
+
+	if ( st.st_size < 1 )
+	{
+		return 0;
+	}
+
+	int records_num = 0;
+
+	fseek(fd, 0, SEEK_SET);
+
+	Note note;
+	memset(&note, 0, sizeof(note));
+	
+	int cur_id = 0;
+	do
+	{
+		fread(&note, sizeof(Note), 1, fd);
+		cur_id = atoi(note.id);
+		if ( cur_id > 0 )
+			records_num++;
+	}
+	while ( cur_id > 0 );
+
+	return records_num;
 }
 
 FILE* open_table_file(const char* filename)
@@ -162,6 +199,12 @@ int running(FILE* fd)
 {
 	while ( 1 )
 	{
+		int records_count = get_records_num(fd);
+		if ( records_count < 0 )
+		{
+			return 0;
+		}
+
 		int mode = -1;
 		if ( !choose_menu_option(&mode) )
 		{
