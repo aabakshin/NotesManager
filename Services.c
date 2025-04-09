@@ -5,7 +5,7 @@
 #include "Services.h"
 #include "Input.h"
 #include "Menu.h"
-
+#include <fcntl.h>
 
 enum
 {
@@ -94,8 +94,8 @@ static void itoa(int number, char* num_buf, int max_buf_len)
 
 	int cnt = num_digit_cnt(number);
 
-	if ( cnt > (max_buf_len-1) )
-		cnt = max_buf_len-1;
+	if ( cnt > max_buf_len - 1 )
+		cnt = max_buf_len - 1;
 
 	int flag = 0;
 	if ( number < 0 )
@@ -149,7 +149,7 @@ static int get_records_num(FILE* fd)
 		fprintf(stderr, "Unable to get size of \"%s\" file!\n", FILENAME);
 		return -1;
 	}
-	
+
 	if ( ((st.st_size % sizeof(Note)) != 0) || (st.st_size < 0) )
 	{
 		fprintf(stderr, "File \"%s\" has incorrect structure size!\n", FILENAME);
@@ -162,7 +162,7 @@ static int get_records_num(FILE* fd)
 	}
 
 	int records_num = 0;
-	
+
 	fseek(fd, 0, SEEK_SET);
 
 	Note note;
@@ -195,7 +195,7 @@ static int get_record_index(FILE* fd)
 	{
 		return 1;
 	}
-	
+
 	fseek(fd, 0, SEEK_SET);
 
 	Note note;
@@ -218,7 +218,7 @@ static int get_record_index(FILE* fd)
 	{
 		return records_num + 1;
 	}
-	
+
 	return index;
 }
 
@@ -248,7 +248,7 @@ static int get_record_by_index(FILE* fd, int index)
 		}
 	}
 	while ( !feof(fd) );
-	
+
 	if ( !success_flag )
 		return 0;
 
@@ -304,7 +304,7 @@ int running(FILE* fd)
 				printf("%s", "\nNote has successfully inserted in the table!\n");
 				printf("%s", "Press any key for continue\n");
 				fflush(stdout);
-				getchar();
+				get_any_key();
 				break;
 			case REMOVE_EXIST_NOTE:
 				if ( !hndls[REMOVE_EXIST_NOTE](fd, records_count) )
@@ -315,7 +315,7 @@ int running(FILE* fd)
 				printf("%s", "\nNote has successfully removed from the table!\n");
 				printf("%s", "Press any key for continue\n");
 				fflush(stdout);
-				getchar();
+				get_any_key();
 				break;
 			case PRINT_SPECIFIC_NOTE:
 				if ( !hndls[PRINT_SPECIFIC_NOTE](fd, records_count) )
@@ -325,7 +325,7 @@ int running(FILE* fd)
 				}
 				printf("%s", "\nPress any key for continue\n");
 				fflush(stdout);
-				getchar();
+				get_any_key();
 				break;
 			case PRINT_TABLE:
 				if ( !hndls[PRINT_TABLE](fd, records_count) )
@@ -335,7 +335,7 @@ int running(FILE* fd)
 				}
 				printf("%s", "\nPress any key for continue\n");
 				fflush(stdout);
-				getchar();
+				get_any_key();
 				break;
 			case EXIT_FROM_APP:
 				return 1;
@@ -431,7 +431,7 @@ static int remove_exist_note(FILE* fd, int records_count)
 	}
 
 	fseek(fd, (input_id-1)*sizeof(Note), SEEK_SET);
-	
+
 	Note zeroes;
 	memset(&zeroes, 0, sizeof(Note));
 	fwrite(&zeroes, sizeof(Note), 1, fd);
@@ -477,12 +477,12 @@ static int print_specific_note(FILE* fd, int records_count)
 
 	Note record;
 	memset(&record, 0, sizeof(Note));
-	
+
 	fseek(fd, (input_id-1)*sizeof(Note), SEEK_SET);
 	fread(&record, sizeof(Note), 1, fd);
 
-	printf("\n(%s)     \"%s\"     [%s]\n", record.id, record.note, record.timestamp);
-	
+	printf("\n%-10s  %-50s  %24s\n", record.id, record.note, record.timestamp);
+
 	fseek(fd, 0, SEEK_SET);
 
 	return 1;
@@ -502,15 +502,15 @@ static int print_table(FILE* fd, int records_count)
 	{
 		memset(&record, 0, sizeof(Note));
 		fread(&record, sizeof(Note), 1, fd);
-		
+
 		if ( feof(fd) )
 			break;
 
 		if ( (record.id[0] != '0') && (record.note[0] != '\0') && (record.timestamp[0] != '\0') )
-			printf("(%s)     \"%s\"     [%s]\n", record.id, record.note, record.timestamp);
+			printf("%-10s  %-50s  %24s\n", record.id, record.note, record.timestamp);
 #ifdef DEBUG
 		else
-			printf("(%s)     \"%s\"     [%s]\n", record.id, record.note, record.timestamp);
+			printf("%-10s  %-50s  %24s\n", record.id, record.note, record.timestamp);
 #endif
 	}
 	while ( !feof(fd) );

@@ -14,6 +14,35 @@ enum {   MAX_SYM_CODE_SIZE    =   10   };
 
 static int get_str(char* buffer, int buffer_size);
 
+int get_any_key(void)
+{
+	struct termios t1, t2;
+	tcgetattr(0, &t1);
+	memcpy(&t2, &t1, sizeof(t1));
+
+	t1.c_lflag &= ~ICANON;
+	t1.c_lflag &= ~ISIG;
+	t1.c_lflag &= ~ECHO;
+	t1.c_cc[VMIN] = 0;
+	t1.c_cc[VTIME] = 0;
+
+	tcsetattr(0, TCSANOW, &t1);
+		
+	char read_sym[MAX_SYM_CODE_SIZE] = { 0 };
+	while ( 1 )
+	{
+		int rc = read(0, read_sym, 6);	/* 6 - макс. размер в байтах кода клавиши на клавиатуре(F1-F12) */
+
+		if ( rc < 1 )
+			continue;
+
+		break;
+	}
+	
+	tcsetattr(0, TCSANOW, &t2);
+
+	return 1;
+}
 
 int input(char* buffer, int buffer_size)
 {
