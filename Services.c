@@ -34,6 +34,7 @@ static void itoa(int number, char* num_buf, int max_buf_len);
 static char* get_date_str(char* current_date, int date_size);
 static int get_records_num(FILE* fd);
 static int get_record_index(FILE* fd);
+static int get_record_by_index(FILE* fd, int index);
 static int insert_new_note(FILE* fd, int records_count);
 static int remove_exist_note(FILE* fd, int records_count);
 static int print_specific_note(FILE* fd, int records_count);
@@ -137,6 +138,7 @@ static char* get_date_str(char* current_date, int date_size)
 	return current_date;
 }
 
+/* кол-во непустых записей в таблице */
 static int get_records_num(FILE* fd)
 {
 	struct stat st;
@@ -160,14 +162,21 @@ static int get_records_num(FILE* fd)
 	}
 
 	int records_num = 0;
+	
+	/* Potential BUG! Need fix! */
+	long cur_pos = ftell(fd);
+	fseek(fd, 0, SEEK_SET);			/* <- bug here */
+	long new_cur_pos = ftell(fd);
 
-	fseek(fd, 0, SEEK_SET);
+	printf("\ncur_pos = %ld\n"
+			"new_cur_pos = %ld\n", cur_pos, new_cur_pos);
+	/* Potential BUG! Need fix! */
 
 	Note note;
 	int cur_id = 0;
 	do
 	{
-		memset(&note, 0, sizeof(note));
+		memset(&note, 0, sizeof(Note));
 		fread(&note, sizeof(Note), 1, fd);
 
 		cur_id = atoi(note.id);
@@ -179,7 +188,7 @@ static int get_records_num(FILE* fd)
 	return records_num;
 }
 
-/* получение индекса первой свободной записи таблицы */
+/* получение индекса первой пустой записи таблицы */
 static int get_record_index(FILE* fd)
 {
 	int records_num = get_records_num(fd);
@@ -214,10 +223,43 @@ static int get_record_index(FILE* fd)
 
 	if ( index == records_num )
 	{
-		return 0;
+		return records_num + 1;
 	}
 	
 	return index;
+}
+
+/* есть ли в таблице запись с заданным index'ом */
+static int get_record_by_index(FILE* fd, int index)
+{
+	if ( index < 1 )
+	{
+		return 0;
+	}
+
+	fseek(fd, 0, SEEK_SET);
+
+	Note record;
+	int success_flag = 0;
+
+	do
+	{
+		memset(&record, 0, sizeof(Note));
+		fread(&record, sizeof(Note), 1, fd);
+
+		int table_id = atoi(record.id);
+		if ( table_id == index )
+		{
+			success_flag = 1;
+			break;
+		}
+	}
+	while ( !feof(fd) );
+	
+	if ( !success_flag )
+		return 0;
+
+	return 1;
 }
 
 FILE* open_table_file(const char* filename)
@@ -336,19 +378,23 @@ static int insert_new_note(FILE* fd, int records_count)
 	/* in other case: records_count > 0 */
 	else
 	{
+		int index = get_record_index(fd);
+		if ( index <= 0 )
+		{
+			putchar('\n');
+			return 0;
+		}
+
 		char cnt[10];
-		//////!
-		itoa(records_count + 1, cnt, 9);
+		itoa(index, cnt, 9);
 		strcpy(record.id, cnt);
 	}
 
 	strcpy(record.note, buffer);
 	get_date_str(record.timestamp, TIMESTAMP_SIZE);
 
-
-
-	/////!
-	fseek(fd, 0, SEEK_END);
+	int index = atoi(record.id);
+	fseek(fd, (index-1) * sizeof(Note), SEEK_SET);
 	fwrite(&record, sizeof(Note), 1, fd);
 	fseek(fd, 0, SEEK_SET);
 
@@ -378,59 +424,22 @@ static int remove_exist_note(FILE* fd, int records_count)
 	if ( buffer[len-1] == '\n' )
 		buffer[len-1] = '\0';
 
-	int id = atoi(buffer);
-	if ( id < 1 )
+	int input_id = atoi(buffer);
+	if ( input_id < 1 )
 	{
 		fprintf(stderr, "%s", "\n\"id\" has invalid value!\n");
 		return 0;
 	}
 
-	Note record;
-	int i;
-	for ( i = 1; i <= records_count; i++ )
+	if ( !get_record_by_index(fd, input_id) )
 	{
-		memset(&record, 0, sizeof(Note));
-		fseek(fd, (i-1) * sizeof(Note), SEEK_SET);
-		fread(&record, sizeof(Note), 1, fd);
-
-		int rec_id = atoi(record.id);
-		if ( id == rec_id )
-			break;
-	}
-
-	if ( i > records_count )
-	{
-		fprintf(stderr, "\nUnable to find a note with id=%d in table!\n", id);
+		fprintf(stderr, "\nUnable to find a note with id=%d in table!\n", input_id);
 		return 0;
 	}
-
-	int idx = i;
-	const char eof = EOF;
-
-	/* Удаляемая запись последняя */
-	if ( idx >= records_count )
-	{
-		fseek(fd, (idx-1) * sizeof(Note), SEEK_SET);
-		fwrite(&eof, sizeof(char), 1, fd);
-		fseek(fd, 0, SEEK_SET);
-	}
-	else
-	{
-		for ( i = idx; i < records_count; i++ )
-		{
-			memset(&record, 0, sizeof(Note));
-			fseek(fd, i * sizeof(Note), SEEK_SET);
-			fread(&record, sizeof(Note), 1, fd);
-
-			fseek(fd, (i-1) * sizeof(Note), SEEK_SET);
-			fwrite(&record, sizeof(Note), 1, fd);
-		}
-		fwrite(&eof, sizeof(char), 1, fd);
-		fseek(fd, 0, SEEK_SET);
-	}
-
-	/* перенумеровать записи в таблице */
-
+	
+	fseek(fd, (input_id-1)*sizeof(Note), SEEK_SET);
+	const char zero = 0x00;
+	fwrite(&zero, sizeof(char), sizeof(Note), fd);
 
 	return 1;
 }
@@ -458,33 +467,28 @@ static int print_specific_note(FILE* fd, int records_count)
 	if ( buffer[len-1] == '\n' )
 		buffer[len-1] = '\0';
 
-	int id = atoi(buffer);
-	if ( id < 1 )
+	int input_id = atoi(buffer);
+	if ( input_id < 1 )
 	{
 		fprintf(stderr, "%s", "\n\"id\" has invalid value!\n");
 		return 0;
 	}
 
-	Note record;
-	int i;
-	for ( i = 1; i <= records_count; i++ )
+	if ( !get_record_by_index(fd, input_id) )
 	{
-		memset(&record, 0, sizeof(Note));
-		fseek(fd, (i-1) * sizeof(Note), SEEK_SET);
-		fread(&record, sizeof(Note), 1, fd);
-
-		int rec_id = atoi(record.id);
-		if ( id == rec_id )
-			break;
-	}
-
-	if ( i > records_count )
-	{
-		fprintf(stderr, "\nUnable to find a note with id=%d in table!\n", id);
+		fprintf(stderr, "\nUnable to find a note with id=%d in table!\n", input_id);
 		return 0;
 	}
 
+	Note record;
+	memset(&record, 0, sizeof(Note));
+	
+	fseek(fd, (input_id-1)*sizeof(Note), SEEK_SET);
+	fread(&record, sizeof(Note), 1, fd);
+
 	printf("\n(%s)     \"%s\"     [%s]\n", record.id, record.note, record.timestamp);
+	
+	fseek(fd, 0, SEEK_SET);
 
 	return 1;
 }
@@ -497,16 +501,24 @@ static int print_table(FILE* fd, int records_count)
 		return 0;
 	}
 
+	fseek(fd, 0, SEEK_SET);
 	Note record;
-	int i;
-	for ( i = 1; i <= records_count; i++ )
+	do
 	{
 		memset(&record, 0, sizeof(Note));
-		fseek(fd, (i-1) * sizeof(Note), SEEK_SET);
 		fread(&record, sizeof(Note), 1, fd);
+		
+		if ( feof(fd) )
+			break;
 
-		printf("(%s)     \"%s\"     [%s]\n", record.id, record.note, record.timestamp);
+		if ( (record.id[0] != '0') && (record.note[0] != '\0') && (record.timestamp[0] != '\0') )
+			printf("(%s)     \"%s\"     [%s]\n", record.id, record.note, record.timestamp);
+#ifdef DEBUG
+		else
+			printf("(%s)     \"%s\"     [%s]\n", record.id, record.note, record.timestamp);
+#endif
 	}
+	while ( !feof(fd) );
 
 	return 1;
 }
