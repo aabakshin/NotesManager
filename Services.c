@@ -33,6 +33,7 @@ static int num_digit_cnt(int number);
 static void itoa(int number, char* num_buf, int max_buf_len);
 static char* get_date_str(char* current_date, int date_size);
 static int get_records_num(FILE* fd);
+static int get_record_index(FILE* fd);
 static int insert_new_note(FILE* fd, int records_count);
 static int remove_exist_note(FILE* fd, int records_count);
 static int print_specific_note(FILE* fd, int records_count);
@@ -147,13 +148,13 @@ static int get_records_num(FILE* fd)
 		return -1;
 	}
 	
-	if ( (st.st_size % sizeof(Note)) != 0 )
+	if ( ((st.st_size % sizeof(Note)) != 0) || (st.st_size < 0) )
 	{
 		fprintf(stderr, "File \"%s\" has incorrect structure size!\n", FILENAME);
 		return -1;
 	}
 
-	if ( st.st_size < 1 )
+	if ( st.st_size == 0 )
 	{
 		return 0;
 	}
@@ -163,19 +164,60 @@ static int get_records_num(FILE* fd)
 	fseek(fd, 0, SEEK_SET);
 
 	Note note;
-	memset(&note, 0, sizeof(note));
-	
 	int cur_id = 0;
 	do
 	{
+		memset(&note, 0, sizeof(note));
 		fread(&note, sizeof(Note), 1, fd);
+
 		cur_id = atoi(note.id);
 		if ( cur_id > 0 )
 			records_num++;
 	}
-	while ( cur_id > 0 );
+	while ( !feof(fd) );
 
 	return records_num;
+}
+
+/* получение индекса первой свободной записи таблицы */
+static int get_record_index(FILE* fd)
+{
+	int records_num = get_records_num(fd);
+
+	if ( records_num < 0 )
+	{
+		return -1;
+	}
+
+	if ( records_num == 0 )
+	{
+		return 1;
+	}
+	
+	fseek(fd, 0, SEEK_SET);
+
+	Note note;
+	int index = 0;
+	do
+	{
+		memset(&note, 0, sizeof(note));
+		fread(&note, sizeof(Note), 1, fd);
+		index++;
+
+		int id = atoi(note.id);
+		if ( (id == 0) && (note.note[0] == '\0') && (note.timestamp[0] == '\0') )
+		{
+			break;
+		}
+	}
+	while ( !feof(fd) );
+
+	if ( index == records_num )
+	{
+		return 0;
+	}
+	
+	return index;
 }
 
 FILE* open_table_file(const char* filename)
@@ -197,6 +239,11 @@ FILE* open_table_file(const char* filename)
 
 int running(FILE* fd)
 {
+	if ( fd == NULL )
+	{
+		return 0;
+	}
+
 	while ( 1 )
 	{
 		int records_count = get_records_num(fd);
@@ -263,17 +310,6 @@ int running(FILE* fd)
 
 static int insert_new_note(FILE* fd, int records_count)
 {
-	if ( fd == NULL )
-	{
-		return 0;
-	}
-
-	if ( records_count < 0 )
-	{
-		fprintf(stderr, "%s", "\nFile size has invalid value!\n");
-		return 0;
-	}
-
 	printf("%s", "\nEnter a note: ");
 	fflush(stdout);
 
@@ -289,7 +325,6 @@ static int insert_new_note(FILE* fd, int records_count)
 	if ( buffer[len-1] == '\n' )
 		buffer[len-1] = '\0';
 
-
 	Note record;
 	memset(&record, 0, sizeof(Note));
 
@@ -298,9 +333,11 @@ static int insert_new_note(FILE* fd, int records_count)
 		record.id[0] = '1';
 		record.id[1] = '\0';
 	}
+	/* in other case: records_count > 0 */
 	else
 	{
 		char cnt[10];
+		//////!
 		itoa(records_count + 1, cnt, 9);
 		strcpy(record.id, cnt);
 	}
@@ -308,6 +345,9 @@ static int insert_new_note(FILE* fd, int records_count)
 	strcpy(record.note, buffer);
 	get_date_str(record.timestamp, TIMESTAMP_SIZE);
 
+
+
+	/////!
 	fseek(fd, 0, SEEK_END);
 	fwrite(&record, sizeof(Note), 1, fd);
 	fseek(fd, 0, SEEK_SET);
@@ -317,11 +357,6 @@ static int insert_new_note(FILE* fd, int records_count)
 
 static int remove_exist_note(FILE* fd, int records_count)
 {
-	if ( fd == NULL )
-	{
-		return 0;
-	}
-
 	if ( records_count <= 0 )
 	{
 		fprintf(stderr, "%s", "\nTable is empty file or file size has invalid value!\n");
@@ -402,11 +437,6 @@ static int remove_exist_note(FILE* fd, int records_count)
 
 static int print_specific_note(FILE* fd, int records_count)
 {
-	if ( fd == NULL )
-	{
-		return 0;
-	}
-
 	if ( records_count <= 0 )
 	{
 		fprintf(stderr, "%s", "\nTable is empty file or file size has invalid value!\n");
@@ -461,11 +491,6 @@ static int print_specific_note(FILE* fd, int records_count)
 
 static int print_table(FILE* fd, int records_count)
 {
-	if ( fd == NULL )
-	{
-		return 0;
-	}
-
 	if ( records_count <= 0 )
 	{
 		fprintf(stderr, "%s", "\nTable is empty file or file size has invalid value!\n");
