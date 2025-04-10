@@ -5,7 +5,7 @@
 #include "Services.h"
 #include "Input.h"
 #include "Menu.h"
-
+#include <ctype.h>
 
 enum
 {
@@ -32,6 +32,8 @@ static void reverse(char* s);
 static int num_digit_cnt(int number);
 static void itoa(int number, char* num_buf, int max_buf_len);
 static char* get_date_str(char* current_date, int date_size);
+
+/* Move in Operations module */
 static int get_records_num(FILE* fd);
 static int get_record_index(FILE* fd);
 static int get_record_by_index(FILE* fd, int index);
@@ -296,28 +298,34 @@ int running(FILE* fd)
 		switch ( mode )
 		{
 			case INSERT_NEW_NOTE:
+				printf("%s", "\033[0d\033[2J"); /* clear the screen */
+				fflush(stdout);
 				if ( !hndls[INSERT_NEW_NOTE](fd, records_count) )
 				{
 					fprintf(stderr, "%s", "Unable to insert note in the table!\n");
 					return 0;
 				}
-				printf("%s", "\nNote has successfully inserted in the table!\n");
-				printf("%s", "Press any key for continue\n");
+				printf("%s", "\nNote has successfully inserted in the table!\n"
+							 "Press any key for continue\n");
 				fflush(stdout);
 				get_any_key();
 				break;
 			case REMOVE_EXIST_NOTE:
+				printf("%s", "\033[0d\033[2J"); /* clear the screen */
+				fflush(stdout);
 				if ( !hndls[REMOVE_EXIST_NOTE](fd, records_count) )
 				{
 					fprintf(stderr, "%s", "Unable to remove note from the table!\n");
 					return 0;
 				}
-				printf("%s", "\nNote has successfully removed from the table!\n");
-				printf("%s", "Press any key for continue\n");
+				printf("%s", "\nNote has successfully removed from the table!\n"
+							 "Press any key for continue\n");
 				fflush(stdout);
 				get_any_key();
 				break;
 			case PRINT_SPECIFIC_NOTE:
+				printf("%s", "\033[0d\033[2J"); /* clear the screen */
+				fflush(stdout);
 				if ( !hndls[PRINT_SPECIFIC_NOTE](fd, records_count) )
 				{
 					fprintf(stderr, "%s", "Unable to print specific note!\n");
@@ -328,6 +336,8 @@ int running(FILE* fd)
 				get_any_key();
 				break;
 			case PRINT_TABLE:
+				printf("%s", "\033[0d\033[2J"); /* clear the screen */
+				fflush(stdout);
 				if ( !hndls[PRINT_TABLE](fd, records_count) )
 				{
 					fprintf(stderr, "%s", "Unable to print the table!\n");
@@ -338,6 +348,8 @@ int running(FILE* fd)
 				get_any_key();
 				break;
 			case EXIT_FROM_APP:
+				printf("%s", "\033[0d\033[2J"); /* clear the screen */
+				fflush(stdout);
 				return 1;
 		}
 	}
@@ -359,6 +371,12 @@ static int insert_new_note(FILE* fd, int records_count)
 	int len = strlen(buffer);
 	if ( buffer[len-1] == '\n' )
 		buffer[len-1] = '\0';
+	
+	if ( !isalpha(buffer[0]) && !isdigit(buffer[0]) )
+	{
+		fprintf(stderr, "%s", "Empty string or begins with not a digit or alphabet symbol!\n");
+		return 0;
+	}
 
 	Note record;
 	memset(&record, 0, sizeof(Note));

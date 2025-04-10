@@ -10,9 +10,11 @@
 static const double app_version = 0.1;
 static const char* app_name = "NotesManager";
 
+
 #ifdef DEBUG
 static void view_str(const char* str, int str_len);
 #endif
+
 
 void show_menu(void)
 {
