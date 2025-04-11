@@ -14,6 +14,9 @@ enum {   MAX_SYM_CODE_SIZE    =   10   };
 
 static int get_str(char* buffer, int buffer_size);
 
+/* UTF-16LE */
+static const char rus_alpha_codes[] = "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя";
+
 int get_any_key(void)
 {
 	struct termios t1, t2;
@@ -27,7 +30,7 @@ int get_any_key(void)
 	t1.c_cc[VTIME] = 0;
 
 	tcsetattr(0, TCSANOW, &t1);
-		
+
 	char read_sym[MAX_SYM_CODE_SIZE] = { 0 };
 	while ( 1 )
 	{
@@ -38,7 +41,7 @@ int get_any_key(void)
 
 		break;
 	}
-	
+
 	tcsetattr(0, TCSANOW, &t2);
 
 	return 1;
@@ -90,7 +93,7 @@ static int get_str(char* buffer, int buffer_size)
 	while ( 1 )
 	{
 		int rc = read(0, read_sym, 6);	/* 6 - макс. размер в байтах кода клавиши на клавиатуре(F1-F12) */
-
+		
 		if ( rc < 1 )
 			continue;
 		
@@ -274,7 +277,6 @@ static int get_str(char* buffer, int buffer_size)
 				break;
 			}
 			
-			
 			if ( spec_flag )
 			{
 				spec_flag = 0;
@@ -301,9 +303,53 @@ static int get_str(char* buffer, int buffer_size)
 				write(1, &read_sym[0], 1);
 			}
 		}
+		else if ( rc == 2 )
+		{
+			/* Обработка 2-байтных значений кириллицы */
+
+			int is_cyrilic_sym = 0;
+			int len = strlen(rus_alpha_codes);
+			int j;
+			for ( j = 0; j < len; j++ )
+			{
+				if ( read_sym[0] == rus_alpha_codes[j*2] )
+					if ( read_sym[1] == rus_alpha_codes[j*2+1] )
+					{
+						is_cyrilic_sym = 1;
+						break;
+					}
+			}
+
+			/* вывод кода текущего введённого символа */
+			/*printf("\n--> %04x %04x\n", read_sym[0], read_sym[1]);
+			fflush(stdout);*/
+
+			if ( is_cyrilic_sym )
+			{
+				write(1, read_sym, 2);
+
+				if ( (i+2) > buffer_size-2 )
+				{
+					buffer[buffer_size-2] = '\n';
+					buffer[buffer_size-1] = '\0';
+
+					i = buffer_size-1;
+
+					break;
+				}
+
+				buffer[i] = read_sym[0];
+				i++;
+				buffer[i] = read_sym[1];
+				i++;
+			}
+
+			continue;
+		}
 		else if ( rc == 3 )
 		{
 			/* обработка клавиши ARROW_LEFT с 3-байтным кодом */
+
 			if (
 						( read_sym[0] == 0x1b )		&&			/* 27 */
 						( read_sym[1] == 0x5b )		&&			/* 91 */

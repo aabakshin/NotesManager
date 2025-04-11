@@ -372,9 +372,9 @@ static int insert_new_note(FILE* fd, int records_count)
 	if ( buffer[len-1] == '\n' )
 		buffer[len-1] = '\0';
 	
-	if ( !isalpha(buffer[0]) && !isdigit(buffer[0]) )
+	if ( (buffer[0] == '\n') || (buffer[0] == '\0') || (buffer[0] == ' ') )
 	{
-		fprintf(stderr, "%s", "Empty string or begins with not a digit or alphabet symbol!\n");
+		fprintf(stderr, "%s", "Empty string!\n");
 		return 0;
 	}
 
