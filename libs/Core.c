@@ -2,10 +2,10 @@
 #define CORE_C_SENTRY
 
 
-#include "Core.h"
-#include "Input.h"
-#include "Menu.h"
-#include "Operations.h"
+#include "../includes/Core.h"
+#include "../includes/Input.h"
+#include "../includes/Menu.h"
+#include "../includes/Operations.h"
 
 
 extern int (*hndls[HANDLERS_NUM])(FILE*, int);

@@ -2,8 +2,8 @@
 #define OPERATIONS_C_SENTRY
 
 
-#include "Operations.h"
-#include "Input.h"
+#include "../includes/Operations.h"
+#include "../includes/Input.h"
 
 
 enum

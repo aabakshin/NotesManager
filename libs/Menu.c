@@ -1,8 +1,8 @@
 #ifndef MENU_C_SENTRY
 #define MENU_C_SENTRY
 
-#include "Input.h"
-#include "Menu.h"
+#include "../includes/Input.h"
+#include "../includes/Menu.h"
 #include <stdio.h>
 #include <stdlib.h>
 

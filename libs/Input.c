@@ -1,7 +1,7 @@
 #ifndef INPUT_C_SENTRY
 #define INPUT_C_SENTRY
 
-#include "Input.h"
+#include "../includes/Input.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -61,8 +61,7 @@ int input(char* buffer, int buffer_size)
 	t1.c_cc[VTIME] = 0;
 
 	tcsetattr(0, TCSANOW, &t1);
-	/*********************************************/	
-	
+
 	int result = get_str(buffer, buffer_size);
 
 	/* восстановление канонического режима */
@@ -74,7 +73,7 @@ int input(char* buffer, int buffer_size)
 
 /* Обработка терминального ввода в ручном режиме при помощи termios
  * Реализация некоторых возможностей терминала(backspace, удаление последнего слова, del, стрелка влево-вправо)
- * Получение строки из станд.потока ввода через низкоуровненые функции и 
+ * Получение строки из станд.потока ввода через низкоуровненые функции и
  * обработка содержимого с учётом использования многобайтных символов
  * Кол-во вводимых с стандартного потока ввода символов должно быть не более buffer_size-2
  * Возвращает длину получившейся строки вместе с символом line feed */
@@ -85,20 +84,20 @@ static int get_str(char* buffer, int buffer_size)
 
 	/* буфер под прочитанный символ */
 	char read_sym[MAX_SYM_CODE_SIZE] = { 0 };
-	
+
 	/* индекс текущей позиции в buffer */
 	int i = 0;
-	
+
 	/**/
 	int left_offset = 0;
 
 	while ( 1 )
 	{
 		int rc = read(0, read_sym, 6);	/* 6 - макс. размер в байтах кода клавиши на клавиатуре(F1-F12) */
-		
+
 		if ( rc < 1 )
 			continue;
-		
+
 		if ( rc == 1 )
 		{
 			if ( read_sym[0] == 3 ) /* Ctrl-C */
@@ -119,9 +118,9 @@ static int get_str(char* buffer, int buffer_size)
 				}
 				buffer[buffer_size-2] = '\n';
 				buffer[buffer_size-1] = '\0';
-				
+
 				i = buffer_size-1;
-				
+
 				break;
 			}
 			else if ( (read_sym[0] == '\b') || (read_sym[0] == 127) )	/* Обработка backspace */
@@ -141,7 +140,7 @@ static int get_str(char* buffer, int buffer_size)
 						i += left_offset;
 						continue;
 					}
-					
+
 					char buf[buffer_size];
 					int x, z = 0;
 					for ( x = i; x < i+left_offset; x++, z++ )
@@ -228,10 +227,10 @@ static int get_str(char* buffer, int buffer_size)
 				}
 				continue;
 			}
-			
+
 			/* обработка 1-байтного ascii символа */
 			int spec_flag = 0;
-			int save_pos = 0; 
+			int save_pos = 0;
 
 			if ( left_offset > 0 )
 			{
@@ -251,7 +250,7 @@ static int get_str(char* buffer, int buffer_size)
 
 				buffer[i] = read_sym[0];
 				i++;
-				
+
 				for ( x = 0; buf[x]; x++ )
 				{
 					if ( i < buffer_size-1 )
@@ -273,18 +272,18 @@ static int get_str(char* buffer, int buffer_size)
 			{
 				buffer[buffer_size-2] = '\n';
 				buffer[buffer_size-1] = '\0';
-				
+
 				i = buffer_size-1;
 
 				break;
 			}
-			
+
 			if ( spec_flag )
 			{
 				spec_flag = 0;
 				int l_char = i-1;
 				int cur_pos = i;
-				
+
 				while ( cur_pos >= 0 )
 				{
 					putchar('\b');
@@ -352,11 +351,11 @@ static int get_str(char* buffer, int buffer_size)
 		else if ( rc == 3 )
 		{
 			/* обработка клавиши ARROW_LEFT с 3-байтным кодом */
-			if (
+			if	(
 						( read_sym[0] == 0x1b )		&&			/* 27 */
 						( read_sym[1] == 0x5b )		&&			/* 91 */
 						( read_sym[2] == 0x44 )					/* 68 */
-			   )
+				)
 			{
 				if ( left_offset < i )
 				{
@@ -381,17 +380,18 @@ static int get_str(char* buffer, int buffer_size)
 					left_offset--;
 				}
 				fflush(stdout);
-			}			
+			}
 		}
 		else if ( rc == 4 )
 		{
 			/* обработка клавиши DEL с 4-х байтным кодом */
-			if (
+			if
+				(
 						( read_sym[0] == 0x1b )		&&		/* 27 */
 						( read_sym[1] == 0x5b )		&&		/* 91 */
 						( read_sym[2] == 0x33 )		&&		/* 51 */
 						( read_sym[3] == 0x7e )				/* 126 */
-			   )
+				)
 			{
 				if ( left_offset > 0 )
 				{
@@ -427,7 +427,7 @@ static int get_str(char* buffer, int buffer_size)
 			}
 		}
 	}
-	
+
 	/* длина строки buffer */
 	return i;
 }
