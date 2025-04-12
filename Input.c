@@ -15,7 +15,7 @@ enum {   MAX_SYM_CODE_SIZE    =   10   };
 static int get_str(char* buffer, int buffer_size);
 
 /* UTF-16LE */
-static const char rus_alpha_codes[] = "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя";
+const char rus_alpha_codes[] = "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя";
 
 int get_any_key(void)
 {

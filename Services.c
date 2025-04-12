@@ -5,7 +5,7 @@
 #include "Services.h"
 #include "Input.h"
 #include "Menu.h"
-#include <ctype.h>
+
 
 enum
 {
@@ -39,9 +39,11 @@ static int get_record_index(FILE* fd);
 static int get_record_by_index(FILE* fd, int index);
 static int insert_new_note(FILE* fd, int records_count);
 static int remove_exist_note(FILE* fd, int records_count);
+static int print_record_strings(const char** strings, int* widths_fields_output, int strings_len);
 static int print_specific_note(FILE* fd, int records_count);
 static int print_table(FILE* fd, int records_count);
 
+extern const char rus_alpha_codes[];
 
 static int (*hndls[HANDLERS_NUM])(FILE*, int) =
 {
@@ -306,7 +308,7 @@ int running(FILE* fd)
 					return 0;
 				}
 				printf("%s", "\nNote has successfully inserted in the table!\n"
-							 "Press any key for continue\n");
+						"Press any key for continue\n");
 				fflush(stdout);
 				get_any_key();
 				break;
@@ -319,7 +321,7 @@ int running(FILE* fd)
 					return 0;
 				}
 				printf("%s", "\nNote has successfully removed from the table!\n"
-							 "Press any key for continue\n");
+						"Press any key for continue\n");
 				fflush(stdout);
 				get_any_key();
 				break;
@@ -371,7 +373,7 @@ static int insert_new_note(FILE* fd, int records_count)
 	int len = strlen(buffer);
 	if ( buffer[len-1] == '\n' )
 		buffer[len-1] = '\0';
-	
+
 	if ( (buffer[0] == '\n') || (buffer[0] == '\0') || (buffer[0] == ' ') )
 	{
 		fprintf(stderr, "%s", "Empty string!\n");
@@ -457,6 +459,72 @@ static int remove_exist_note(FILE* fd, int records_count)
 	return 1;
 }
 
+/* ручное форматирование строк для вывода в stdout */
+static int print_record_strings(const char** strings, int* widths_fields_output, int strings_len)
+{
+	if ( (strings == NULL) || (*strings == NULL) )
+	{
+		return 0;
+	}
+
+	int* cyril_cnt = malloc(sizeof(int) * strings_len);
+	if ( !cyril_cnt )
+		return 0;
+
+	for ( int i = 0; i < strings_len; i++ )
+		cyril_cnt[i] = 0;
+
+	int cyrillic_symbols = 0;
+
+	int i;
+	for ( i = 0; strings[i] != NULL; i++ )
+	{
+		int j;
+		for ( j = 0; strings[i][j]; j++ )
+		{
+			int k;
+			for ( k = 0; rus_alpha_codes[k]; k++ )
+			{
+				if ( strings[i][j] == rus_alpha_codes[k] )
+				{
+					cyrillic_symbols++;
+					break;
+				}
+			}
+
+			putchar(strings[i][j]);
+			fflush(stdout);
+		}
+		cyril_cnt[i] = cyrillic_symbols;
+		cyrillic_symbols = 0;
+
+		int len = strlen(strings[i]);
+		int spaces_cnt = widths_fields_output[i] - len + cyril_cnt[i]/2;
+		
+		/* printf("(%d-%d+%d)", widths_fields_output[i], len, cyril_cnt[i]); */
+
+		if ( i < strings_len-1 )
+		{
+			spaces_cnt += 3;	/* 3 - кол-во пробелов между полями */
+		}
+
+		int l;
+		for ( l = 1; l <= spaces_cnt; l++ )
+		{
+			putchar(' ');
+			fflush(stdout);
+		}
+	}
+
+	putchar('\n');
+	fflush(stdout);
+
+	if ( cyril_cnt )
+		free(cyril_cnt);
+
+	return 1;
+}
+
 static int print_specific_note(FILE* fd, int records_count)
 {
 	if ( records_count <= 0 )
@@ -499,7 +567,22 @@ static int print_specific_note(FILE* fd, int records_count)
 	fseek(fd, (input_id-1)*sizeof(Note), SEEK_SET);
 	fread(&record, sizeof(Note), 1, fd);
 
-	printf("\n%-10s  %-50s  %24s\n", record.id, record.note, record.timestamp);
+	putchar('\n');
+
+	const char* strings[] =
+	{
+				record.id,
+				record.note,
+				record.timestamp,
+				NULL
+	};
+	int strings_len = sizeof(strings) / sizeof(char*);
+	int fields_width[sizeof(strings) / sizeof(char*)] = { 10, 48, 24 };
+
+	print_record_strings(strings, fields_width, strings_len-1);
+
+	/*printf("\n%-10s   %-48s   %24s\n", record.id, record.note, record.timestamp);
+	printf("%ld %ld %ld\n", strlen(record.id), strlen(record.note), strlen(record.timestamp));*/
 
 	fseek(fd, 0, SEEK_SET);
 
@@ -524,11 +607,27 @@ static int print_table(FILE* fd, int records_count)
 		if ( feof(fd) )
 			break;
 
+		const char* strings[] =
+		{
+					record.id,
+					record.note,
+					record.timestamp,
+					NULL
+		};
+		int strings_len = sizeof(strings) / sizeof(char*);
+		int fields_width[sizeof(strings) / sizeof(char*)] = { 10, 48, 24 };
+
 		if ( (record.id[0] != '0') && (record.note[0] != '\0') && (record.timestamp[0] != '\0') )
-			printf("%-10s  %-50s  %24s\n", record.id, record.note, record.timestamp);
+		{
+			print_record_strings(strings, fields_width, strings_len-1);
+			/*printf("%-10s   %-48s   %24s\n", record.id, record.note, record.timestamp);*/
+		}
 #ifdef DEBUG
 		else
-			printf("%-10s  %-50s  %24s\n", record.id, record.note, record.timestamp);
+		{
+			printf_record_strings(strings, fields_width, strings_len-1);
+			/*printf("%-10s   %-48s   %24s\n", record.id, record.note, record.timestamp);*/
+		}
 #endif
 	}
 	while ( !feof(fd) );
