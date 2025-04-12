@@ -72,22 +72,24 @@ int input(char* buffer, int buffer_size)
 }
 
 
-/* 
- * Обработка терминального ввода в ручном режиме при помощи termios
+/* Обработка терминального ввода в ручном режиме при помощи termios
  * Реализация некоторых возможностей терминала(backspace, удаление последнего слова, del, стрелка влево-вправо)
  * Получение строки из станд.потока ввода через низкоуровненые функции и 
  * обработка содержимого с учётом использования многобайтных символов
  * Кол-во вводимых с стандартного потока ввода символов должно быть не более buffer_size-2
- * Возвращает длину получившейся строки вместе с символом line feed
- */
-
+ * Возвращает длину получившейся строки вместе с символом line feed */
 static int get_str(char* buffer, int buffer_size)
 {
 	if ( (buffer == NULL) || (buffer_size < 2) )
 		return -1;
 
+	/* буфер под прочитанный символ */
 	char read_sym[MAX_SYM_CODE_SIZE] = { 0 };
+	
+	/* индекс текущей позиции в buffer */
 	int i = 0;
+	
+	/**/
 	int left_offset = 0;
 
 	while ( 1 )
@@ -133,9 +135,6 @@ static int get_str(char* buffer, int buffer_size)
 				}
 				else
 				{
-					char buf[buffer_size];
-					int x, z = 0;
-
 					i -= left_offset;
 					if ( i < 1 )
 					{
@@ -143,6 +142,8 @@ static int get_str(char* buffer, int buffer_size)
 						continue;
 					}
 					
+					char buf[buffer_size];
+					int x, z = 0;
 					for ( x = i; x < i+left_offset; x++, z++ )
 						buf[z] = buffer[x];
 					buf[z] = '\0';
@@ -228,6 +229,7 @@ static int get_str(char* buffer, int buffer_size)
 				continue;
 			}
 			
+			/* обработка 1-байтного ascii символа */
 			int spec_flag = 0;
 			int save_pos = 0; 
 
@@ -282,12 +284,14 @@ static int get_str(char* buffer, int buffer_size)
 				spec_flag = 0;
 				int l_char = i-1;
 				int cur_pos = i;
+				
 				while ( cur_pos >= 0 )
 				{
 					putchar('\b');
 					fflush(stdout);
 					cur_pos--;
 				}
+
 				for ( cur_pos = 0; cur_pos <= l_char; cur_pos++ )
 					write(1, &buffer[cur_pos], 1);
 
@@ -306,7 +310,6 @@ static int get_str(char* buffer, int buffer_size)
 		else if ( rc == 2 )
 		{
 			/* Обработка 2-байтных значений кириллицы */
-
 			int is_cyrilic_sym = 0;
 			int len = strlen(rus_alpha_codes);
 			int j;
@@ -349,7 +352,6 @@ static int get_str(char* buffer, int buffer_size)
 		else if ( rc == 3 )
 		{
 			/* обработка клавиши ARROW_LEFT с 3-байтным кодом */
-
 			if (
 						( read_sym[0] == 0x1b )		&&			/* 27 */
 						( read_sym[1] == 0x5b )		&&			/* 91 */
@@ -379,27 +381,7 @@ static int get_str(char* buffer, int buffer_size)
 					left_offset--;
 				}
 				fflush(stdout);
-			}
-			
-			/* обработка клавиши ARROW_UP с 3-байтным кодом */
-			else if (     
-							( read_sym[0] == 0x1b )		&&		/* 27 */
-							( read_sym[1] == 0x5b )		&&		/* 91 */
-							( read_sym[2] == 0x41 )				/* 65 */
-					)
-			{
-					/* ignore ARROW_UP key */
-			}
-
-			/* обработка клавиши ARROW_DOWN с 3-х байтным кодом */
-			else if (     
-							( read_sym[0] == 0x1b )		&&		/* 27 */
-							( read_sym[1] == 0x5b )		&&		/* 91 */
-							( read_sym[2] == 0x42 )				/* 66 */
-					)
-			{
-					/* ignore ARROW_DOWN key */
-			}
+			}			
 		}
 		else if ( rc == 4 )
 		{
@@ -445,7 +427,8 @@ static int get_str(char* buffer, int buffer_size)
 			}
 		}
 	}
-
+	
+	/* длина строки buffer */
 	return i;
 }
 

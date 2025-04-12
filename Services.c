@@ -19,6 +19,14 @@ enum
 			HANDLERS_NUM			=			5
 };
 
+enum
+{
+			ID_FIELD_WIDTH					=			10,
+			NOTE_FIELD_WIDTH				=			48,
+			TIMESTAMP_FIELD_WIDTH			=			24,
+			FILL_BETWEEN_WIDTH				=			 3
+};
+
 struct Note
 {
 	char id[ID_SIZE];
@@ -500,12 +508,12 @@ static int print_record_strings(const char** strings, int* widths_fields_output,
 
 		int len = strlen(strings[i]);
 		int spaces_cnt = widths_fields_output[i] - len + cyril_cnt[i]/2;
-		
+
 		/* printf("(%d-%d+%d)", widths_fields_output[i], len, cyril_cnt[i]); */
 
 		if ( i < strings_len-1 )
 		{
-			spaces_cnt += 3;	/* 3 - кол-во пробелов между полями */
+			spaces_cnt += FILL_BETWEEN_WIDTH;	/* 3 - кол-во пробелов между полями */
 		}
 
 		int l;
@@ -577,7 +585,7 @@ static int print_specific_note(FILE* fd, int records_count)
 				NULL
 	};
 	int strings_len = sizeof(strings) / sizeof(char*);
-	int fields_width[sizeof(strings) / sizeof(char*)] = { 10, 48, 24 };
+	int fields_width[sizeof(strings) / sizeof(char*)] = { ID_FIELD_WIDTH, NOTE_FIELD_WIDTH, TIMESTAMP_FIELD_WIDTH };
 
 	print_record_strings(strings, fields_width, strings_len-1);
 
@@ -615,7 +623,7 @@ static int print_table(FILE* fd, int records_count)
 					NULL
 		};
 		int strings_len = sizeof(strings) / sizeof(char*);
-		int fields_width[sizeof(strings) / sizeof(char*)] = { 10, 48, 24 };
+		int fields_width[sizeof(strings) / sizeof(char*)] = { ID_FIELD_WIDTH, NOTE_FIELD_WIDTH, TIMESTAMP_FIELD_WIDTH };
 
 		if ( (record.id[0] != '0') && (record.note[0] != '\0') && (record.timestamp[0] != '\0') )
 		{
