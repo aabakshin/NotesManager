@@ -51,7 +51,8 @@ int running(FILE* fd)
 		switch ( mode )
 		{
 			case INSERT_NEW_NOTE:
-				printf("%s", "\033[0d\033[2J"); /* clear the screen */
+				/* printf("%s", "\033[0d\033[2J"); */ /* clear the screen */
+				printf("\033c"); /* clear the screen for VT100 terminal */
 				fflush(stdout);
 				if ( !hndls[INSERT_NEW_NOTE](fd, records_count) )
 				{
@@ -64,7 +65,8 @@ int running(FILE* fd)
 				get_any_key();
 				break;
 			case REMOVE_EXIST_NOTE:
-				printf("%s", "\033[0d\033[2J"); /* clear the screen */
+				/* printf("%s", "\033[0d\033[2J"); */ /* clear the screen */
+				printf("\033c"); /* clear the screen for VT100 terminal */
 				fflush(stdout);
 				if ( !hndls[REMOVE_EXIST_NOTE](fd, records_count) )
 				{
@@ -77,7 +79,8 @@ int running(FILE* fd)
 				get_any_key();
 				break;
 			case PRINT_SPECIFIC_NOTE:
-				printf("%s", "\033[0d\033[2J"); /* clear the screen */
+				/* printf("%s", "\033[0d\033[2J"); */ /* clear the screen */
+				printf("\033c"); /* clear the screen for VT100 terminal */
 				fflush(stdout);
 				if ( !hndls[PRINT_SPECIFIC_NOTE](fd, records_count) )
 				{
@@ -89,7 +92,8 @@ int running(FILE* fd)
 				get_any_key();
 				break;
 			case PRINT_TABLE:
-				printf("%s", "\033[0d\033[2J"); /* clear the screen */
+				/* printf("%s", "\033[0d\033[2J"); */ /* clear the screen */
+				printf("\033c"); /* clear the screen for VT100 terminal */
 				fflush(stdout);
 				if ( !hndls[PRINT_TABLE](fd, records_count) )
 				{
@@ -101,7 +105,8 @@ int running(FILE* fd)
 				get_any_key();
 				break;
 			case EXIT_FROM_APP:
-				printf("%s", "\033[0d\033[2J"); /* clear the screen */
+				/* printf("%s", "\033[0d\033[2J"); */ /* clear the screen */
+				printf("\033c"); /* clear the screen for VT100 terminal */
 				fflush(stdout);
 				return 1;
 		}

@@ -1,6 +1,7 @@
 #ifndef INPUT_C_SENTRY
 #define INPUT_C_SENTRY
 
+
 #include "../includes/Input.h"
 #include <stdio.h>
 #include <stdlib.h>

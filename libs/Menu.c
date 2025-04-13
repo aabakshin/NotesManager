@@ -18,7 +18,9 @@ static void view_str(const char* str, int str_len);
 
 void show_menu(void)
 {
-	printf("%s", "\033[0d\033[2J"); /* clear the screen */
+	/* printf("%s", "\033[0d\033[2J"); */ /* clear the screen */
+	printf("\033c"); /* clear the screen for VT100 terminal */
+	fflush(stdout);
 
 	printf("-========== %s version %.1lf ==========-\n", app_name, app_version);
 	printf("%s",
