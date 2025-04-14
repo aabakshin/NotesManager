@@ -32,7 +32,6 @@ void show_menu(void)
 	printf("-========== %s version %.1lf ==========-\n\n", app_name, app_version);
 
 	printf("%s", ">>> ");
-
 	fflush(stdout);
 }
 
