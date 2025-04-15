@@ -421,7 +421,7 @@ static int print_table(FILE* fd, int records_count)
 #ifdef DEBUG
 		else
 		{
-			printf_record_strings(strings, fields_width, strings_len-1);
+			print_record_strings(strings, fields_width, strings_len-1);
 			/*printf("%-10s   %-48s   %24s\n", record.id, record.note, record.timestamp);*/
 		}
 #endif

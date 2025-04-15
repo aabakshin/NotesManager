@@ -12,17 +12,36 @@
 
 enum {   MAX_SYM_CODE_SIZE    =   10   };
 
+
 static int get_str(char* buffer, int buffer_size);
-static int handle_ascii_key(char* buffer, int buffer_size, int* i, int* left_offset, char ch);
-static int handle_ctrlw_key(char* buffer, int buffer_size, int* i, int* left_offset, char ch);
-static int handle_newline_key(char* buffer, int buffer_size, int* i, int* left_offset, char ch);
-static int handle_backspace_key(char* buffer, int buffer_size, int* i, int* left_offset, char ch);
-static int handle_arrow_left_key(char* buffer, int buffer_size, int* i, int* left_offset, char ch);
-static int handle_arrow_right_key(char* buffer, int buffer_size, int* i, int* left_offset, char ch);
-static int handle_del_key(char* buffer, int buffer_size, int* i, int* left_offset, char ch);
+#ifdef DEBUG_INPUT
+static void show_dec_sym(char* ch_buf);
+#endif
+static int is_cyrillic_sym(char* ch_buf);
+static int handle_alphabet_key(char* buffer, int buffer_size, int* i, int* left_offset, char* ch_buf);
+static int handle_ctrlw_key(char* buffer, int buffer_size, int* i, int* left_offset, char* ch_buf);
+static int handle_newline_key(char* buffer, int buffer_size, int* i, int* left_offset, char* ch_buf);
+static int handle_backspace_key(char* buffer, int buffer_size, int* i, int* left_offset, char* ch_buf);
+static int handle_arrow_left_key(char* buffer, int buffer_size, int* i, int* left_offset, char* ch_buf);
+static int handle_arrow_right_key(char* buffer, int buffer_size, int* i, int* left_offset, char* ch_buf);
+static int handle_del_key(char* buffer, int buffer_size, int* i, int* left_offset, char* ch_buf);
 
 /* UTF-16LE */
 const char rus_alpha_codes[] = "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя";
+
+#ifdef DEBUG_INPUT
+static void show_dec_sym(char* ch_buf)
+{
+	putchar('\n');
+	int i;
+	for ( i = 0; i < MAX_SYM_CODE_SIZE; i++ )
+	{
+		printf("%3d ", ch_buf[i]);
+	}
+	putchar('\n');
+	fflush(stdout);
+}
+#endif
 
 int get_any_key(void)
 {
@@ -104,6 +123,10 @@ static int get_str(char* buffer, int buffer_size)
 		if ( rc < 1 )
 			continue;
 
+#ifdef DEBUG_INPUT
+		show_dec_sym(read_sym);
+#endif
+
 		if ( rc == 1 )
 		{
 			if ( read_sym[0] == 3 ) /* Ctrl-C */
@@ -113,68 +136,50 @@ static int get_str(char* buffer, int buffer_size)
 			}
 			else if ( (read_sym[0] == 4) || (read_sym[0] == '\n') ) /* 4 => EOF или Ctrl-D */
 			{
-				handle_newline_key(buffer, buffer_size, &i, &left_offset, read_sym[0]);
+				handle_newline_key(buffer, buffer_size, &i, &left_offset, read_sym);
 
 				break;
 			}
 			else if ( (read_sym[0] == '\b') || (read_sym[0] == 127) ) /* Обработка backspace */
 			{
-				handle_backspace_key(buffer, buffer_size, &i, &left_offset, read_sym[0]);
+				handle_backspace_key(buffer, buffer_size, &i, &left_offset, read_sym);
+				memset(read_sym, 0, sizeof(read_sym));
 
 				continue;
 			}
 			else if ( read_sym[0] == 23 ) /* Ctrl-W удаление последнего слова */
 			{
-				handle_ctrlw_key(buffer, buffer_size, &i, &left_offset, read_sym[0]);
+				handle_ctrlw_key(buffer, buffer_size, &i, &left_offset, read_sym);
+				memset(read_sym, 0, sizeof(read_sym));
 
 				continue;
 			}
 
 			/* обработка 1-байтного ascii символа */
-			if ( !handle_ascii_key(buffer, buffer_size, &i, &left_offset, read_sym[0]) )
+			if ( !handle_alphabet_key(buffer, buffer_size, &i, &left_offset, read_sym) )
 			{
 				break;
 			}
+
+			memset(read_sym, 0, sizeof(read_sym));
 		}
 		else if ( rc == 2 )
 		{
 			/* Обработка 2-байтных значений кириллицы */
-			int is_cyrilic_sym = 0;
-			int len = strlen(rus_alpha_codes);
-			int j;
-			for ( j = 0; j < len; j++ )
-			{
-				if ( read_sym[0] == rus_alpha_codes[j*2] )
-					if ( read_sym[1] == rus_alpha_codes[j*2+1] )
-					{
-						is_cyrilic_sym = 1;
-						break;
-					}
-			}
 
 			/* вывод кода текущего введённого символа */
 			/*printf("\n--> %04x %04x\n", read_sym[0], read_sym[1]);
 			fflush(stdout);*/
 
-			if ( is_cyrilic_sym )
+			if ( is_cyrillic_sym(read_sym) )
 			{
-				write(1, read_sym, 2);
-
-				if ( (i+2) > buffer_size-2 )
+				if ( !handle_alphabet_key(buffer, buffer_size, &i, &left_offset, read_sym) )
 				{
-					buffer[buffer_size-2] = '\n';
-					buffer[buffer_size-1] = '\0';
-
-					i = buffer_size-1;
-
 					break;
 				}
-
-				buffer[i] = read_sym[0];
-				i++;
-				buffer[i] = read_sym[1];
-				i++;
 			}
+
+			memset(read_sym, 0, sizeof(read_sym));
 		}
 		else if ( rc == 3 )
 		{
@@ -185,7 +190,7 @@ static int get_str(char* buffer, int buffer_size)
 						( read_sym[2] == 0x44 )					/* 68 */
 				)
 			{
-				handle_arrow_left_key(buffer, buffer_size, &i, &left_offset, read_sym[0]);
+				handle_arrow_left_key(buffer, buffer_size, &i, &left_offset, read_sym);
 			}
 
 			/* обработка клавиши ARROW_RIGHT с 3-байтным кодом */
@@ -195,8 +200,10 @@ static int get_str(char* buffer, int buffer_size)
 							( read_sym[2] == 0x43 )				/* 67 */
 					)
 			{
-				handle_arrow_right_key(buffer, buffer_size, &i, &left_offset, read_sym[0]);
+				handle_arrow_right_key(buffer, buffer_size, &i, &left_offset, read_sym);
 			}
+
+			memset(read_sym, 0, sizeof(read_sym));
 		}
 		else if ( rc == 4 )
 		{
@@ -209,8 +216,10 @@ static int get_str(char* buffer, int buffer_size)
 						( read_sym[3] == 0x7e )				/* 126 */
 				)
 			{
-				handle_del_key(buffer, buffer_size, &i, &left_offset, read_sym[0]);
+				handle_del_key(buffer, buffer_size, &i, &left_offset, read_sym);
 			}
+
+			memset(read_sym, 0, sizeof(read_sym));
 		}
 	}
 
@@ -218,18 +227,41 @@ static int get_str(char* buffer, int buffer_size)
 	return i;
 }
 
-static int handle_ascii_key(char* buffer, int buffer_size, int* i, int* left_offset, char ch)
+static int is_cyrillic_sym(char* ch_buf)
 {
+	int len = strlen(rus_alpha_codes);
+	int j;
+	for ( j = 0; j < len; j++ )
+	{
+		if ( ch_buf[0] == rus_alpha_codes[j*2] )
+		{
+			if ( ch_buf[1] == rus_alpha_codes[j*2+1] )
+			{
+				return 1;
+			}
+		}
+	}
+
+	return 0;
+}
+
+static int handle_alphabet_key(char* buffer, int buffer_size, int* i, int* left_offset, char* ch_buf)
+{
+	int cyril_flag = 0;
+	if ( is_cyrillic_sym(ch_buf) )
+		cyril_flag = 1;
+
 	int save_pos = 0;
 
-	if ( *left_offset > 0 )   /* добавляем не в конец */
+	if ( *left_offset > 0 )
 	{
 		char buf[buffer_size];
-		int x, j = 0;
 		int last_ch = *i - 1;
 
 		*i -= *left_offset;
 		save_pos = *i;
+
+		int x, j = 0;
 		for ( x = *i; x <= last_ch; x++ )
 		{
 			buf[j] = buffer[x];
@@ -237,8 +269,14 @@ static int handle_ascii_key(char* buffer, int buffer_size, int* i, int* left_off
 		}
 		buf[j] = '\0';
 
-		buffer[*i] = ch;
+		buffer[*i] = ch_buf[0];
 		(*i)++;
+
+		if ( cyril_flag )
+		{
+			buffer[*i] = ch_buf[1];
+			(*i)++;
+		}
 
 		for ( x = 0; buf[x]; x++ )
 		{
@@ -253,11 +291,18 @@ static int handle_ascii_key(char* buffer, int buffer_size, int* i, int* left_off
 	}
 	else
 	{
-		buffer[*i] = ch;
+		buffer[*i] = ch_buf[0];
 		(*i)++;
+
+		if ( cyril_flag )
+		{
+			buffer[*i] = ch_buf[1];
+			(*i)++;
+		}
 	}
 
-	if ( *i > buffer_size-2 )
+
+	if ( (*i+2) > buffer_size-2 )
 	{
 		buffer[buffer_size-2] = '\n';
 		buffer[buffer_size-1] = '\0';
@@ -267,7 +312,8 @@ static int handle_ascii_key(char* buffer, int buffer_size, int* i, int* left_off
 		return 0;
 	}
 
-	if ( *left_offset > 0 )	/* вывод символа добавленного не в конец */
+
+	if ( *left_offset > 0 )
 	{
 		int last_ch_pos = *i-1;
 
@@ -277,7 +323,11 @@ static int handle_ascii_key(char* buffer, int buffer_size, int* i, int* left_off
 		}
 		fflush(stdout);
 
-		for ( int x = 1; x <= last_ch_pos - save_pos; x++ )
+		int y = last_ch_pos - save_pos;
+		if ( cyril_flag )
+			y--;
+
+		for ( int x = 1; x <= y; x++ )
 		{
 			putchar('\b');
 		}
@@ -285,13 +335,13 @@ static int handle_ascii_key(char* buffer, int buffer_size, int* i, int* left_off
 	}
 	else
 	{
-		write(1, &ch, 1);
+		write(1, ch_buf, 2);
 	}
 
 	return 1;
 }
 
-static int handle_ctrlw_key(char* buffer, int buffer_size, int* i, int* left_offset, char ch)
+static int handle_ctrlw_key(char* buffer, int buffer_size, int* i, int* left_offset, char* ch_buf)
 {
 	if ( *i < 1 )
 		return 0;
@@ -350,7 +400,7 @@ static int handle_ctrlw_key(char* buffer, int buffer_size, int* i, int* left_off
 	return 1;
 }
 
-static int handle_newline_key(char* buffer, int buffer_size, int* i, int* left_offset, char ch)
+static int handle_newline_key(char* buffer, int buffer_size, int* i, int* left_offset, char* ch_buf)
 {
 	const char nl = '\n';
 	write(1, &nl, 1);
@@ -370,7 +420,7 @@ static int handle_newline_key(char* buffer, int buffer_size, int* i, int* left_o
 	return 1;
 }
 
-static int handle_backspace_key(char* buffer, int buffer_size, int* i, int* left_offset, char ch)
+static int handle_backspace_key(char* buffer, int buffer_size, int* i, int* left_offset, char* ch_buf)
 {
 	if ( *left_offset < 1 )
 	{
@@ -415,7 +465,7 @@ static int handle_backspace_key(char* buffer, int buffer_size, int* i, int* left
 	return 1;
 }
 
-static int handle_arrow_left_key(char* buffer, int buffer_size, int* i, int* left_offset, char ch)
+static int handle_arrow_left_key(char* buffer, int buffer_size, int* i, int* left_offset, char* ch_buf)
 {
 	if ( *left_offset < *i )	/* если текущая позиция буфера в не начале строки - перемещать курсор влево */
 	{
@@ -427,7 +477,7 @@ static int handle_arrow_left_key(char* buffer, int buffer_size, int* i, int* lef
 	return 1;
 }
 
-static int handle_arrow_right_key(char* buffer, int buffer_size, int* i, int* left_offset, char ch)
+static int handle_arrow_right_key(char* buffer, int buffer_size, int* i, int* left_offset, char* ch_buf)
 {
 	if ( *left_offset > 0 )	/* если не конец строки - перемещать курсор вправо */
 	{
@@ -439,7 +489,7 @@ static int handle_arrow_right_key(char* buffer, int buffer_size, int* i, int* le
 	return 1;
 }
 
-static int handle_del_key(char* buffer, int buffer_size, int* i, int* left_offset, char ch)
+static int handle_del_key(char* buffer, int buffer_size, int* i, int* left_offset, char* ch_buf)
 {
 	if ( *left_offset > 0 )   /* если не конец строки */
 	{
