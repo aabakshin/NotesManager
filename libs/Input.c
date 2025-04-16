@@ -489,31 +489,87 @@ static int handle_backspace_key(char* buffer, int buffer_size, int* i, int* left
 
 static int handle_arrow_left_key(char* buffer, int buffer_size, int* i, int* left_offset, char* ch_buf)
 {
-	if ( *left_offset < *i )	/* если текущая позиция буфера в не начале строки - перемещать курсор влево */
+	if ( *left_offset < *i )	/* если текущая позиция буфера не в начале строки - перемещать курсор влево */
 	{
 		putchar('\b');
 		fflush(stdout);
-		(*left_offset)++;
-	}
+		
+		int x = *i - *left_offset - 1;
+		
+		if ( x > 0 )
+		{			
+			char sym[3] =
+			{
+				buffer[x-1],
+				buffer[x],
+				'\0'
+			};
 
+			if ( is_cyrillic_sym(sym) )
+			{
+				*left_offset += 2;		
+			}
+			else
+			{
+				(*left_offset)++;
+			}
+
+			return 1;
+		}
+
+		if ( x == 0 )
+		{
+			(*left_offset)++;
+		}
+	}
+	
 	return 1;
 }
 
 static int handle_arrow_right_key(char* buffer, int buffer_size, int* i, int* left_offset, char* ch_buf)
 {
-	if ( *left_offset > 0 )	/* если не конец строки - перемещать курсор вправо */
-	{
-		putchar(buffer[*i - *left_offset]);
-		fflush(stdout);
-		(*left_offset)--;
-	}
+	if ( *left_offset > 0 )		/* если не конец строки - перемещать курсор вправо */
+	{	
+		int x = *i - *left_offset;
 
+		if ( *left_offset > 1 )
+		{
+			char sym[3] =
+			{
+				buffer[x],
+				buffer[x+1],
+				'\0'
+			};
+
+			if ( is_cyrillic_sym(sym) )
+			{
+				write(1, sym, 2);
+				(*left_offset) -= 2;
+			}
+			else
+			{
+				putchar(buffer[*i - *left_offset]);
+				fflush(stdout);
+				(*left_offset)--;
+			}
+			
+			return 1;
+		}
+
+		if ( *left_offset == 1 )
+		{
+			putchar(buffer[*i - *left_offset]);
+			fflush(stdout);
+			(*left_offset)--;
+		}
+	}
+	
 	return 1;
 }
 
 static int handle_del_key(char* buffer, int buffer_size, int* i, int* left_offset, char* ch_buf)
 {
-	if ( *left_offset > 0 )   /* если не конец строки */
+	if ( *left_offset > 0 )		/* если не конец строки */
 	{
 		char buf[buffer_size];
 		int last_ch_pos = *i - 1;
