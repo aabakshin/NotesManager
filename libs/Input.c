@@ -259,13 +259,26 @@ static int ascii_cnt_str(const char* buffer, int buffer_size)
 
 	int counter = 0;
 
+
+	/*putchar('\n');
+	int j;
+	for ( j = 0; j < buffer_size; j++ )
+	{
+		printf("%4d ", buffer[j]);
+		if ( ((j+1) % 10) == 0 )
+			putchar('\n');
+	}
+	putchar('\n');
+	fflush(stdout);*/
+
+
 	int i;
-	for ( i = 0; i < buffer_size; i++ )
+	for ( i = 0; buffer[i]; i++ )
 	{
 		if ( (buffer[i] > 0) && (buffer[i] <= 127) )
 			counter++;
 	}
-	
+
 	return counter;
 }
 
@@ -338,17 +351,17 @@ static int handle_alphabet_key(char* buffer, int buffer_size, int* i, int* left_
 
 		return 0;
 	}
-	
+
 
 	if ( *left_offset > 0 )
-	{	
+	{
 		/*printf("\n*left_offset = %d\n"
 				"*i = %d\n"
 				"save_pos = %d\n", *left_offset, *i, save_pos);
 		fflush(stdout);*/
 
-		int last_ch_pos = *i-1; 
-		
+		int last_ch_pos = *i-1;
+
 		/* вывод содержимого buffer начиная с вставленного элемента */
 
 		for ( int cur_pos = save_pos; cur_pos <= last_ch_pos; cur_pos++ )
@@ -356,15 +369,15 @@ static int handle_alphabet_key(char* buffer, int buffer_size, int* i, int* left_
 			putchar(buffer[cur_pos]);
 		}
 		fflush(stdout);
-		
+
 		save_pos++;
 
 		int len_in_bytes = *i;
 		int ascii_cnt = ascii_cnt_str(buffer, buffer_size);
 		int cyril_cnt = (len_in_bytes -  ascii_cnt) / 2;
 		int total_cnt = ascii_cnt + cyril_cnt;
-		
-		
+
+
 		/*printf("\nlen_in_bytes = %d\n"
 				"ascii_cnt = %d\n"
 				"cyril_cnt = %d\n"
@@ -372,7 +385,7 @@ static int handle_alphabet_key(char* buffer, int buffer_size, int* i, int* left_
 				"save_pos = %d\n"
 				"*left_offset = %d\n", len_in_bytes, ascii_cnt, cyril_cnt, total_cnt, save_pos, *left_offset);
 		fflush(stdout);*/
-	
+
 
 		/* возвращение курсора в прежнее положение после вставки очереднего символа */
 
@@ -385,7 +398,7 @@ static int handle_alphabet_key(char* buffer, int buffer_size, int* i, int* left_
 		}
 		fflush(stdout);
 		*left_offset = *i;
-		
+
 		if ( cyril_flag )
 			save_pos++;
 
@@ -427,7 +440,7 @@ static int handle_ctrlw_key(char* buffer, int buffer_size, int* i, int* left_off
 
 	int last_ch = *i - 1;
 	int cur_pos = *i - *left_offset;
-	int pos = cur_pos;
+	int save_pos = cur_pos;
 
 	char buf[buffer_size];
 	if ( cur_pos > 0 )
@@ -444,14 +457,14 @@ static int handle_ctrlw_key(char* buffer, int buffer_size, int* i, int* left_off
 		int save_i = *i;
 
 		int k;
-		for ( k = 1; k <= pos-cur_pos; k++ )
+		for ( k = 1; k <= save_pos-cur_pos; k++ )
 		{
 			printf("\b \b");
 			fflush(stdout);
 		}
 
 		int x = 0;
-		for ( k = pos; k <= last_ch; k++ )
+		for ( k = save_pos; k <= last_ch; k++ )
 		{
 			buf[x] = buffer[k];
 			x++;
@@ -501,45 +514,120 @@ static int handle_newline_key(char* buffer, int buffer_size, int* i, int* left_o
 
 static int handle_backspace_key(char* buffer, int buffer_size, int* i, int* left_offset, char* ch_buf)
 {
-	if ( *left_offset < 1 )
+	if ( (*left_offset >= 0) && (*left_offset < *i) )
 	{
+		char buf[buffer_size];
+		int is_cyril_flag = 0;	// проверка, является ли удаляемый символ кириллическим
+		int last_ch_pos = *i - 1;
+
+		if ( *left_offset <= 0 )
+		{
+			if ( *i >= 2 )
+			{
+				char sym[3] = { 0 };
+				sym[0] = buffer[*i-2];
+				sym[1] = buffer[*i-1];
+				sym[2] = '\0';
+
+				if ( is_cyrillic_sym(sym) )
+					is_cyril_flag = 1;
+			}
+
+			printf("%s", "\b \b");
+			fflush(stdout);
+			buffer[*i-1] = '\0';
+			if ( is_cyril_flag )
+				buffer[*i-2] = '\0';
+
+			(*i)--;
+			if ( is_cyril_flag )
+				(*i)--;
+
+			return 1;
+		}
+
+		int cur_pos = *i - *left_offset;
+
+		if ( cur_pos >= 2 )
+		{
+			char sym[3] = { 0 };
+			sym[0] = buffer[cur_pos-2];
+			sym[1] = buffer[cur_pos-1];
+			sym[2] = '\0';
+
+			if ( is_cyrillic_sym(sym) )
+				is_cyril_flag = 1;
+		}
+
+		int x, z = 0;
+		for ( x = cur_pos; x <= last_ch_pos; x++ )
+		{
+			buf[z] = buffer[x];
+			z++;
+		}
+		buf[z] = '\0';
+
+		//printf("\nbuf = %s\n", buf);
+
+		x = cur_pos - 1;
+		if ( is_cyril_flag )
+			x--;
+
+		putchar('\b');
+		for ( z = 0; buf[z]; z++, x++ )
+		{
+			buffer[x] = buf[z];
+			putchar(buffer[x]);
+		}
+		putchar(' ');
+		putchar('\b');
+		buffer[x] = '\0';
+		fflush(stdout);
+
+
+		int buf_len = strlen(buf);
+		int ascii_cnt = ascii_cnt_str(buf, strlen(buf)+1);
+		int cyril_cnt = (buf_len - ascii_cnt) / 2;
+		int total_cnt = ascii_cnt + cyril_cnt;
+
+		for ( x = 1; x <= total_cnt; x++ )
+			putchar('\b');
+		fflush(stdout);
+
+
 		if ( *i > 0 )
 		{
 			(*i)--;
-			printf("%s", "\b \b");
-			fflush(stdout);
-		}
-	}
-	else
-	{
-		*i -= *left_offset;
-		if ( *i < 1 )
-		{
-			*i += *left_offset;
-			return 0;
+
+			if ( is_cyril_flag )
+				(*i)--;
 		}
 
-		char buf[buffer_size];
-		int x, z = 0;
-
-		for ( x = *i; x < *i + *left_offset; x++, z++ )
-			buf[z] = buffer[x];
-		buf[z] = '\0';
-
-		(*i)--;
-		putchar('\b');
-		for ( x = 0; buf[x]; x++ )
-		{
-			buffer[*i] = buf[x];
-			putchar(buf[x]);
-			(*i)++;
-		}
-		putchar(' ');
-
-		for ( ; x >= 0; x-- )
-			putchar('\b');
+		/*
+		printf("\nis_cyril_flag = %d\n"
+				"*i = %d\n"
+				"buf_len = %d\n"
+				"ascii_cnt = %d\n"
+				"cyril_cnt = %d\n"
+				"total_cnt = %d\n"
+				"cur_pos = %d\n"
+				"*left_offset = %d\n", is_cyril_flag, *i, buf_len, ascii_cnt, cyril_cnt, total_cnt, cur_pos, *left_offset);
 		fflush(stdout);
+		*/
 	}
+
+	/* check buffer memory */
+
+	/*printf("\nbuffer:\n");
+	for ( int x = 0; x < buffer_size; x++ )
+	{
+		printf("%4d ", buffer[x]);
+		if ( ((x+1) % 10) == 0 )
+			putchar('\n');
+	}
+	putchar('\n');
+	fflush(stdout);*/
+
 
 	return 1;
 }
@@ -550,11 +638,11 @@ static int handle_arrow_left_key(char* buffer, int buffer_size, int* i, int* lef
 	{
 		putchar('\b');
 		fflush(stdout);
-		
+
 		int x = *i - *left_offset - 1;
-		
+
 		if ( x > 0 )
-		{			
+		{
 			char sym[3] =
 			{
 				buffer[x-1],
@@ -564,13 +652,13 @@ static int handle_arrow_left_key(char* buffer, int buffer_size, int* i, int* lef
 
 			if ( is_cyrillic_sym(sym) )
 			{
-				*left_offset += 2;		
+				*left_offset += 2;
 			}
 			else
 			{
 				(*left_offset)++;
 			}
-			
+
 			return 1;
 		}
 
@@ -579,14 +667,14 @@ static int handle_arrow_left_key(char* buffer, int buffer_size, int* i, int* lef
 			(*left_offset)++;
 		}
 	}
-	
+
 	return 1;
 }
 
 static int handle_arrow_right_key(char* buffer, int buffer_size, int* i, int* left_offset, char* ch_buf)
 {
 	if ( *left_offset > 0 )		/* если не конец строки - перемещать курсор вправо */
-	{	
+	{
 		int x = *i - *left_offset;
 
 		if ( *left_offset > 1 )
@@ -620,7 +708,7 @@ static int handle_arrow_right_key(char* buffer, int buffer_size, int* i, int* le
 			(*left_offset)--;
 		}
 	}
-	
+
 	return 1;
 }
 
@@ -628,36 +716,89 @@ static int handle_del_key(char* buffer, int buffer_size, int* i, int* left_offse
 {
 	if ( *left_offset > 0 )		/* если не конец строки */
 	{
+		int is_cyril_flag = 0;	/* проверка, является ли удаляемый символ кириллическим */
+
 		char buf[buffer_size];
 		int last_ch_pos = *i - 1;
 		int cur_pos = *i - *left_offset;
+
+		if ( (cur_pos + 1) < *i )
+		{
+			char sym[3] =
+			{
+						buffer[cur_pos],
+						buffer[cur_pos+1],
+						'\0'
+			};
+
+			if ( is_cyrillic_sym(sym) )
+			{
+				is_cyril_flag = 1;
+			}
+
+			/*printf("\nis_cyril_flag = %d\n", is_cyril_flag);*/
+		}
+
+		int k = cur_pos + 1;
+
+		if ( is_cyril_flag )
+			k++;
+
 		int x = 0;
-		int k;
-		for ( k = cur_pos+1; k <= last_ch_pos; k++ )
+		for ( ; k <= last_ch_pos; k++ )
 		{
 			buf[x] = buffer[k];
 			x++;
 		}
 		buf[x] = '\0';
 
+		/* printf("\nbuf = %s\n", buf); */
+
 		x = 0;
 		for ( k = cur_pos; buf[x]; x++, k++ )
 		{
 			buffer[k] = buf[x];
 			putchar(buffer[k]);
-			fflush(stdout);
 		}
+		buffer[k] = '\0';
 		putchar(' ');
+		putchar('\b');
 		fflush(stdout);
 
-		for ( ; k >= cur_pos; k-- )
+
+		int buf_len = strlen(buf);
+		int ascii_cnt = ascii_cnt_str(buf, strlen(buf)+1);
+		int cyril_cnt = (buf_len - ascii_cnt) / 2;
+		int total_cnt = ascii_cnt + cyril_cnt;
+
+		for ( x = 1; x <= total_cnt; x++ )
 			putchar('\b');
 		fflush(stdout);
 
+
 		if ( *i > 0 )
+		{
 			(*i)--;
 
+			if ( is_cyril_flag )
+				(*i)--;
+		}
+
 		(*left_offset)--;
+
+		if ( is_cyril_flag )
+			(*left_offset)--;
+
+		/*
+		printf("\nbuf = %s\n"
+				"buf_len = %d\n"
+				"ascii_cnt = %d\n"
+				"cyril_cnt = %d\n"
+				"total_cnt = %d\n"
+				"*i = %d\n"
+				"*left_offset = %d\n", buf, buf_len, ascii_cnt, cyril_cnt, total_cnt, *i, *left_offset);
+		fflush(stdout);
+		*/
 	}
 
 	return 1;
