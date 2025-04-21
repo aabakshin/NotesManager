@@ -16,7 +16,7 @@
 enum
 {
 			ID_SIZE					=			20,
-			NOTE_SIZE				=			50,
+			NOTE_SIZE				=			98,
 			TIMESTAMP_SIZE			=			50
 };
 

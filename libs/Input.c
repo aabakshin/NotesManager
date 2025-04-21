@@ -4,6 +4,7 @@
 
 #include "../includes/Input.h"
 #include "../includes/DebugUtils.h"
+#include "../includes/Services.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -21,10 +22,12 @@ enum
 			CTRL_W			=		   23
 };
 
+
 static int get_str(char* buffer, int buffer_size);
 #ifdef DEBUG_INPUT
 static void show_dec_sym(char* ch_buf);
 #endif
+static int check_symbols_cnt(char* buffer, int buffer_size, int* i, int* left_offset, char* read_sym);
 static int is_cyrillic_sym(char* ch_buf);
 static int ascii_cnt_str(const char* buffer, int buffer_size);
 static int handle_alphabet_key(char* buffer, int buffer_size, int* i, int* left_offset, char* ch_buf);
@@ -111,7 +114,7 @@ int input(char* buffer, int buffer_size)
  * Получение строки из станд.потока ввода через низкоуровненые функции и
  * обработка содержимого с учётом использования многобайтных символов
  * Кол-во вводимых с стандартного потока ввода символов должно быть не более buffer_size-2
- * Возвращает длину получившейся строки вместе с символом line feed */
+ * Возвращает длину получившейся строки в байтах вместе с символом line feed */
 static int get_str(char* buffer, int buffer_size)
 {
 	if ( (buffer == NULL) || (buffer_size < 2) )
@@ -150,7 +153,6 @@ static int get_str(char* buffer, int buffer_size)
 			if ( (read_sym[0] == CTRL_D) || (read_sym[0] == '\n') )
 			{
 				handle_newline_key(buffer, buffer_size, &i, &left_offset, read_sym);
-
 				break;
 			}
 
@@ -175,8 +177,10 @@ static int get_str(char* buffer, int buffer_size)
 			{
 				break;
 			}
-
 			memset(read_sym, 0, sizeof(read_sym));
+
+			if ( check_symbols_cnt(buffer, buffer_size, &i, &left_offset, read_sym) )
+				break;
 		}
 		else if ( rc == 2 )
 		{
@@ -193,8 +197,10 @@ static int get_str(char* buffer, int buffer_size)
 					break;
 				}
 			}
-
 			memset(read_sym, 0, sizeof(read_sym));
+
+			if ( check_symbols_cnt(buffer, buffer_size, &i, &left_offset, read_sym) )
+				break;
 		}
 		else if ( rc == 3 )
 		{
@@ -238,8 +244,24 @@ static int get_str(char* buffer, int buffer_size)
 		}
 	}
 
-	/* длина строки buffer */
+	/* длина строки buffer в байтах */
 	return i;
+}
+
+static int check_symbols_cnt(char* buffer, int buffer_size, int* i, int* left_offset, char* read_sym)
+{
+	int ascii_cnt = ascii_cnt_str(buffer, buffer_size);
+	int cyril_cnt = (*i -  ascii_cnt) / 2;
+	int total_cnt = ascii_cnt + cyril_cnt;
+	int max_symbols_cnt = (NOTE_SIZE - 2) / 2;
+
+	if ( total_cnt >= max_symbols_cnt )
+	{
+		handle_newline_key(buffer, buffer_size, i, left_offset, read_sym);
+		return 1;
+	}
+
+	return 0;
 }
 
 static int is_cyrillic_sym(char* ch_buf)
@@ -349,6 +371,10 @@ static int handle_alphabet_key(char* buffer, int buffer_size, int* i, int* left_
 
 		*i = buffer_size-1;
 
+		write(1, &ch_buf[0], 1);
+		if ( cyril_flag )
+			write(1, &ch_buf[1], 1);
+
 		return 0;
 	}
 
@@ -412,7 +438,6 @@ static int handle_alphabet_key(char* buffer, int buffer_size, int* i, int* left_
 	else
 	{
 		write(1, &ch_buf[0], 1);
-
 		if ( cyril_flag )
 			write(1, &ch_buf[1], 1);
 	}
@@ -482,7 +507,7 @@ static int handle_ctrlw_key(char* buffer, int buffer_size, int* i, int* left_off
 			x++;
 		}
 		buf[x] = '\0';
-		
+
 		/* printf("\nbuf = %s\n", buf); */
 
 		buf_len = strlen(buf);
@@ -492,19 +517,19 @@ static int handle_ctrlw_key(char* buffer, int buffer_size, int* i, int* left_off
 
 		int v = cur_pos;
 		for ( x = 0; buf[x]; x++ )
-		{	
+		{
 			buffer[v] = buf[x];
 			putchar(buffer[v]);
 			v++;
 		}
 		fflush(stdout);
-		
+
 		for ( x = v; x <= last_ch; x++ )
 		{
 			putchar(' ');
 			buffer[x] = '\0';
 		}
-		
+
 		int total_cnt = last_ch - v + 1 + buf_cnt;
 		for ( x = 1; x <= total_cnt; x++ )
 			putchar('\b');
@@ -512,7 +537,7 @@ static int handle_ctrlw_key(char* buffer, int buffer_size, int* i, int* left_off
 
 		*i -= del_bytes;
 	}
-	
+
 	/*print_buffer(buffer, buffer_size);*/
 
 	return 1;
@@ -528,6 +553,7 @@ static int handle_newline_key(char* buffer, int buffer_size, int* i, int* left_o
 		buffer[*i] = '\n';
 		(*i)++;
 		buffer[*i] = '\0';
+
 		return 0;
 	}
 	buffer[buffer_size-2] = '\n';
