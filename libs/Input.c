@@ -3,6 +3,7 @@
 
 
 #include "../includes/Input.h"
+#include "../includes/DebugUtils.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -12,6 +13,13 @@
 
 enum {   MAX_SYM_CODE_SIZE    =   10   };
 
+enum
+{
+			CTRL_C			=			3,
+			CTRL_D			=			4,
+			BACKSPACE		=		  127,
+			CTRL_W			=		   23
+};
 
 static int get_str(char* buffer, int buffer_size);
 #ifdef DEBUG_INPUT
@@ -133,25 +141,28 @@ static int get_str(char* buffer, int buffer_size)
 
 		if ( rc == 1 )
 		{
-			if ( read_sym[0] == 3 ) /* Ctrl-C */
+			if ( read_sym[0] == CTRL_C )
 			{
 				/* завершение программы */
 				return -1;
 			}
-			else if ( (read_sym[0] == 4) || (read_sym[0] == '\n') ) /* 4 => EOF или Ctrl-D */
+
+			if ( (read_sym[0] == CTRL_D) || (read_sym[0] == '\n') )
 			{
 				handle_newline_key(buffer, buffer_size, &i, &left_offset, read_sym);
 
 				break;
 			}
-			else if ( (read_sym[0] == '\b') || (read_sym[0] == 127) ) /* Обработка backspace */
+
+			if ( (read_sym[0] == '\b') || (read_sym[0] == BACKSPACE) )
 			{
 				handle_backspace_key(buffer, buffer_size, &i, &left_offset, read_sym);
 				memset(read_sym, 0, sizeof(read_sym));
 
 				continue;
 			}
-			else if ( read_sym[0] == 23 ) /* Ctrl-W удаление последнего слова */
+
+			if ( read_sym[0] == CTRL_W )
 			{
 				handle_ctrlw_key(buffer, buffer_size, &i, &left_offset, read_sym);
 				memset(read_sym, 0, sizeof(read_sym));
@@ -259,18 +270,7 @@ static int ascii_cnt_str(const char* buffer, int buffer_size)
 
 	int counter = 0;
 
-
-	/*putchar('\n');
-	int j;
-	for ( j = 0; j < buffer_size; j++ )
-	{
-		printf("%4d ", buffer[j]);
-		if ( ((j+1) % 10) == 0 )
-			putchar('\n');
-	}
-	putchar('\n');
-	fflush(stdout);*/
-
+	/*print_buffer(buffer, buffer_size);*/
 
 	int i;
 	for ( i = 0; buffer[i]; i++ )
@@ -417,18 +417,8 @@ static int handle_alphabet_key(char* buffer, int buffer_size, int* i, int* left_
 			write(1, &ch_buf[1], 1);
 	}
 
-
 	/* check buffer memory */
-
-	/*printf("\nbuffer:\n");
-	for ( int x = 0; x < buffer_size; x++ )
-	{
-		printf("%4d ", buffer[x]);
-		if ( ((x+1) % 10) == 0 )
-			putchar('\n');
-	}
-	putchar('\n');
-	fflush(stdout);*/
+	/*print_buffer(buffer, buffer_size);*/
 
 	return 1;
 }
@@ -446,12 +436,16 @@ static int handle_ctrlw_key(char* buffer, int buffer_size, int* i, int* left_off
 	if ( cur_pos > 0 )
 	{
 		if ( buffer[cur_pos-1] == ' ' )
+		{
 			while ( (cur_pos > 0) && (buffer[cur_pos-1] == ' ')  )
 				cur_pos--;
-
-		if ( cur_pos > 0 )
-			while ( (cur_pos > 0) && (buffer[cur_pos-1] != ' ') )
-				cur_pos--;
+		}
+		else
+		{
+			if ( cur_pos > 0 )
+				while ( (cur_pos > 0) && (buffer[cur_pos-1] != ' ') )
+					cur_pos--;
+		}
 
 		*i = cur_pos;
 		int save_i = *i;
@@ -479,15 +473,19 @@ static int handle_ctrlw_key(char* buffer, int buffer_size, int* i, int* left_off
 		}
 		fflush(stdout);
 
-		if ( buf[0] != '\0' )
+
+		for ( x = *i; x <= last_ch; x++ )
 		{
-			for ( x = *i; x <= last_ch; x++ )
-				putchar(' ');
-			for ( ; x > save_i; x-- )
-				putchar('\b');
-			fflush(stdout);
+			putchar(' ');
+			buffer[x] = '\0';
 		}
+
+		for ( ; x > save_i; x-- )
+			putchar('\b');
+		fflush(stdout);
 	}
+	
+	/*print_buffer(buffer, buffer_size);*/
 
 	return 1;
 }

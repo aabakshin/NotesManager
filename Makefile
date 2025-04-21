@@ -1,6 +1,6 @@
 CC = gcc
 LIBS_PATH = ./libs
-SRCMODULES = $(LIBS_PATH)/Input.c $(LIBS_PATH)/Menu.c $(LIBS_PATH)/Services.c $(LIBS_PATH)/Operations.c $(LIBS_PATH)/Core.c
+SRCMODULES = $(LIBS_PATH)/Input.c $(LIBS_PATH)/Menu.c $(LIBS_PATH)/Services.c $(LIBS_PATH)/Operations.c $(LIBS_PATH)/Core.c $(LIBS_PATH)/DebugUtils.c
 OBJMODULES = $(SRCMODULES:.c=.o)
 CFLAGS = -Wall -g
 
