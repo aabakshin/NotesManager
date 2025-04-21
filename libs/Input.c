@@ -432,7 +432,7 @@ static int handle_ctrlw_key(char* buffer, int buffer_size, int* i, int* left_off
 	int cur_pos = *i - *left_offset;
 	int save_pos = cur_pos;
 
-	char buf[buffer_size];
+
 	if ( cur_pos > 0 )
 	{
 		if ( buffer[cur_pos-1] == ' ' )
@@ -442,47 +442,75 @@ static int handle_ctrlw_key(char* buffer, int buffer_size, int* i, int* left_off
 		}
 		else
 		{
-			if ( cur_pos > 0 )
-				while ( (cur_pos > 0) && (buffer[cur_pos-1] != ' ') )
-					cur_pos--;
+			while ( (cur_pos > 0) && (buffer[cur_pos-1] != ' ') )
+				cur_pos--;
 		}
 
-		*i = cur_pos;
-		int save_i = *i;
 
-		int k;
-		for ( k = 1; k <= save_pos-cur_pos; k++ )
-		{
-			printf("\b \b");
-			fflush(stdout);
-		}
+		int del_bytes = save_pos - cur_pos;
 
+		char buf[buffer_size];
 		int x = 0;
-		for ( k = save_pos; k <= last_ch; k++ )
+		int k;
+		for ( k = cur_pos; k < save_pos; k++ )
 		{
 			buf[x] = buffer[k];
 			x++;
 		}
 		buf[x] = '\0';
 
-		for ( x = 0; buf[x]; x++ )
+		int buf_len = strlen(buf);
+		int ascii_cnt = ascii_cnt_str(buf, strlen(buf)+1);
+		int cyril_cnt = (buf_len - ascii_cnt) / 2;
+		int buf_cnt = ascii_cnt + cyril_cnt;
+
+		/*printf("\ndel_bytes = %d\n"
+					"buf_cnt = %d\n", del_bytes, buf_cnt);*/
+
+		for ( k = 1; k <= buf_cnt; k++ )
 		{
-			buffer[*i] = buf[x];
-			putchar(buffer[*i]);
-			(*i)++;
+			printf("\b \b");
+			fflush(stdout);
+		}
+
+
+		memset(buf, 0, buffer_size);
+		x = 0;
+		for ( k = save_pos; k <= last_ch; k++ )
+		{
+			buf[x] = buffer[k];
+			x++;
+		}
+		buf[x] = '\0';
+		
+		/* printf("\nbuf = %s\n", buf); */
+
+		buf_len = strlen(buf);
+		ascii_cnt = ascii_cnt_str(buf, strlen(buf)+1);
+		cyril_cnt = (buf_len - ascii_cnt) / 2;
+		buf_cnt = ascii_cnt + cyril_cnt;
+
+		int v = cur_pos;
+		for ( x = 0; buf[x]; x++ )
+		{	
+			buffer[v] = buf[x];
+			putchar(buffer[v]);
+			v++;
 		}
 		fflush(stdout);
-
-
-		for ( x = *i; x <= last_ch; x++ )
+		
+		for ( x = v; x <= last_ch; x++ )
 		{
 			putchar(' ');
 			buffer[x] = '\0';
 		}
-
-		for ( ; x > save_i; x-- )
+		
+		int total_cnt = last_ch - v + 1 + buf_cnt;
+		for ( x = 1; x <= total_cnt; x++ )
 			putchar('\b');
 		fflush(stdout);
+
+		*i -= del_bytes;
 	}
 	
 	/*print_buffer(buffer, buffer_size);*/
